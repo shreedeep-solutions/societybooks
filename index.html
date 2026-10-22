@@ -150,7 +150,7 @@ main{flex:1;overflow-y:auto}
 .tl.g{font-weight:700;padding-top:10px;color:var(--tx2);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px}
 .tl.s{padding-left:28px}.tl.gt{font-weight:700;border-top:1px dashed var(--border2)}
 .tl.tt{font-weight:800;border-top:2px solid var(--border2);background:var(--soft);padding:9px 14px}
-.tl.click{cursor:pointer}.tl.click:hover{background:var(--soft)}
+.tl .p,.tph .p{flex:0 0 108px;width:108px;text-align:right;font-family:var(--mono);color:var(--tx2);border-right:1px solid var(--border);padding-right:8px;margin-right:6px;white-space:nowrap}.haspv .tl .lb{flex:1}.haspv .tl.s{padding-left:14px}.haspv .tl.s .lb{padding-left:14px}.tph{display:flex;justify-content:space-between;align-items:center;gap:6px}.tph .p,.tph .a{font-size:10.5px;letter-spacing:0}.tph>span:nth-child(2){flex:1;text-align:center}.tl.click{cursor:pointer}.tl.click:hover{background:var(--soft)}
 /* billing grid */
 .bgrid td{padding:3px 4px}.bgrid input{padding:4px 6px;width:86px;font-size:12px}
 .sticky-l{position:sticky;left:0;background:var(--card);z-index:1}
@@ -596,7 +596,8 @@ const ENG = (() => {
       const ai = r.accrued || 0;
       if (r.P || r.N || r.I || ai) { members[mid] = { p: r.P, n: r.N, i: r.I }; if (ai) members[mid].ai = ai; }
     }
-    return { heads, members, surplus: ie.surplus };
+    const py = {}; for (const x of [...ie.inc, ...ie.exp]) if (x.amt) py[x.hid] = x.amt;
+    return { heads, members, surplus: ie.surplus, py };
   }
 
 
@@ -904,7 +905,7 @@ function applyLocal(updates) {
     if (LOCAL_SOC.includes(ps[0])) rest = ps.slice(1);
     else if (LOCAL_FY.includes(ps[0]) && ps[1] === S.fyId) rest = ps.slice(2); else continue;
     const v = v0 === undefined || v0 === null ? null : JSON.parse(JSON.stringify(v0)); const k = ps[0];
-    if (!rest.length) { S[k] = k === 'ob' ? { heads: (v || {}).heads || {}, members: (v || {}).members || {} } : (v || {}); hit = true; continue; }
+    if (!rest.length) { S[k] = k === 'ob' ? { heads: (v || {}).heads || {}, members: (v || {}).members || {}, py: (v || {}).py || {} } : (v || {}); hit = true; continue; }
     let o = S[k] = S[k] || {};
     for (let i = 0; i < rest.length - 1; i++) { if (o[rest[i]] == null || typeof o[rest[i]] !== 'object') { if (v === null) { o = null; break; } o[rest[i]] = {}; } o = o[rest[i]]; }
     if (!o) continue; const last = rest[rest.length - 1];
@@ -999,7 +1000,7 @@ const NAV_SOC = [
   ['Billing', [['bills', '🧾', 'Bills'], ['bsetup', '🧮', 'Billing Setup']]],
   ['Books', [['cashbook', '💵', 'Cash Book'], ['bankbook', '🏦', 'Bank Book'], ['gl', '📖', 'General Ledger'], ['mledger', '👤', 'Member Ledger']]],
   ['Final Accounts', [['tb', '⚖️', 'Trial Balance'], ['ie', '📊', 'Income & Expenditure'], ['bs', '📋', 'Balance Sheet'], ['rp', '💱', 'Receipts & Payments']]],
-  ['Reports', [['dues', '🔴', 'Dues & Ageing'], ['billreg', '🗂', 'Bill Register'], ['rcptreg', '🧾', 'Receipt Register'], ['collect', '📈', 'Collection Summary'], ['gstreg', '🏛', 'GST Register'], ['tdsreg', '✂️', 'TDS Register']]],
+  ['Reports', [['dues', '🔴', 'Dues & Ageing'], ['billreg', '🗂', 'Bill Register'], ['rcptreg', '🧾', 'Receipt Register'], ['payreg', '📤', 'Payment Register'], ['jbook', '📓', 'Journal Book'], ['collect', '📈', 'Collection Summary'], ['gstreg', '🏛', 'GST Register'], ['tdsreg', '✂️', 'TDS Register']]],
   ['Masters', [['heads', '🗃', 'Account Heads'], ['members', '👥', 'Members'], ['obal', '🏁', 'Opening Balances']]],
   ['Banking', [['recon', '🔍', 'Bank Reconciliation']]],
   ['Registers', [['inv', '💰', 'Investments (FD/RD)'], ['fa', '🏗', 'Fixed Assets'], ['shares', '📜', 'Share Register'], ['meetings', '🤝', 'Meetings'], ['notices', '📢', 'Notices & Letters'], ['complaints', '📩', 'Complaints']]],
@@ -1089,11 +1090,11 @@ td.n,th.n{text-align:right;font-family:'Courier New',monospace;white-space:nowra
 .sig{display:flex;justify-content:flex-end;margin-top:16px}.sig-b{text-align:center;min-width:220px;font-size:11.5px;font-weight:700}.sig-row{display:flex;gap:28px;justify-content:center}
 .small{font-size:10.5px}.muted{color:#555}.cut{border-top:1.5px dashed #888;margin:12px 0 7px;text-align:center;font-size:10px;color:#666}.rcbox{border:1px solid #999;padding:7px 10px 4px}.rcbox .sig{margin-top:6px}.b{font-weight:700}.right{text-align:right}.center{text-align:center}
 .tf{display:grid;grid-template-columns:1fr 1fr;border:1px solid #999}.tf>div{display:flex;flex-direction:column}.tf>div>.tl.tt{margin-top:auto}.tf>div:first-child{border-right:1px solid #999}.tf .h{font-weight:800;text-align:center;padding:5px;border-bottom:1px solid #999;background:#f1f3f6}
-.tl{display:flex;justify-content:space-between;padding:2px 8px;font-size:11.5px}.tl .a{font-family:'Courier New',monospace}.tl.g{font-weight:700;padding-top:6px}.tl.s{padding-left:18px}.tl.tt{font-weight:800;border-top:1.5px solid #555;background:#f6f7f9;padding:4px 8px}`;
+.tl{display:flex;justify-content:space-between;padding:2px 8px;font-size:11.5px}.haspv .tl .lb,.haspv .tph>span:nth-child(2){flex:1;padding-left:6px}.haspv .tl.s .lb{padding-left:16px}.tl .p,.tph .p{width:78px;flex:0 0 78px;text-align:right;font-family:'Courier New',monospace;color:#444;border-right:1px solid #ccc;padding-right:5px}.tph{display:flex;justify-content:space-between;align-items:center;font-size:10.5px}.tph .p{font-family:inherit;color:inherit;font-size:9.5px}.tph .a{font-size:9.5px}.haspv .tl.s{padding-left:8px}.tl .a{font-family:'Courier New',monospace}.tl.g{font-weight:700;padding-top:6px}.tl.s{padding-left:18px}.tl.tt{font-weight:800;border-top:1.5px solid #555;background:#f6f7f9;padding:4px 8px}`;
 function printDoc(title, html, { auto = true } = {}) {
   const w = window.open('', '_blank', 'width=1000,height=760'); if (!w) { toast('Please allow pop-ups to print', 'err'); return null; }
   w.document.open();
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet"><style>${PRINT_CSS}</style></head><body><div class="np"><button onclick="print()">🖨 Print / Save as PDF</button><button class="g" onclick="close()">✕ Close</button></div>${html}</body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet"><style>${PRINT_CSS}</style></head><body><div class="np"><button onclick="window.print()">🖨 Print / Save as PDF</button><button class="g" onclick="window.close()">✕ Close</button></div>${html}</body></html>`);
   w.document.close(); if (auto) setTimeout(() => { try { w.focus(); w.print(); } catch (e) { } }, 700);
   return w;
 }
@@ -1134,12 +1135,15 @@ function xlsx(filename, sheets) {
   XLSX.writeFile(wb, filename.replace(/[^\w\-. ]+/g, '_') + '.xlsx');
 }
 // T-format: left & right lists of [label, amount|null, bold?]
-function xlsxT(filename, title, leftTitle, rightTitle, left, right) {
+function xlsxT(filename, title, leftTitle, rightTitle, left, right, pv) {
   // keep the TOTAL rows (last item of each side) on the same Excel row
-  const padTo = (a, n) => { a = a.slice(); const last = a.pop(); while (a.length < n - 1) a.push(['', null]); a.push(last); return a; };
-  const n = Math.max(left.length, right.length); left = padTo(left, n); right = padTo(right, n); const rows = [[leftTitle, 'Amount (₹)', '', rightTitle, 'Amount (₹)']];
-  for (let i = 0; i < n; i++) { const a = left[i] || ['', null], b = right[i] || ['', null]; rows.push([a[0], a[1] == null ? '' : r2(a[1]), '', b[0], b[1] == null ? '' : r2(b[1])]); }
-  xlsx(filename, [{ name: title.slice(0, 31), title, rows, cols: [42, 16, 3, 42, 16] }]);
+  const padTo = (a, n) => { a = a.slice(); const last = a.pop(); while (a.length < n - 1) a.push(['', null, null]); a.push(last); return a; };
+  const n = Math.max(left.length, right.length); left = padTo(left, n); right = padTo(right, n);
+  const v = x => (x == null || x === '' ? '' : r2(x));
+  const rows = pv ? [['Previous Year (₹)', leftTitle, 'Current Year (₹)', '', 'Previous Year (₹)', rightTitle, 'Current Year (₹)']] : [[leftTitle, 'Amount (₹)', '', rightTitle, 'Amount (₹)']];
+  for (let i = 0; i < n; i++) { const a = left[i] || ['', null, null], b = right[i] || ['', null, null];
+    rows.push(pv ? [v(a[2]), a[0], v(a[1]), '', v(b[2]), b[0], v(b[1])] : [a[0], v(a[1]), '', b[0], v(b[1])]); }
+  xlsx(filename, [{ name: title.slice(0, 31), title, rows, cols: pv ? [15, 40, 15, 3, 15, 40, 15] : [42, 16, 3, 42, 16] }]);
 }
 
 // ── File import ──────────────────────────────────────────────────────────
@@ -1510,7 +1514,7 @@ function subscribeFY(id) {
   ['ob', 'vch', 'bills', 'runs', 'brs'].forEach(k => { S.loaded[k] = false; });
   S.vch = {}; S.bills = {}; S.runs = {}; S.ob = { heads: {}, members: {} }; S.brs = {};
   const sub = (path, key, fix) => SUBS.fy.push(FBX.listen(sp(path + '/' + id), (v, err) => { if (err) { S.loaded[key] = 'err'; return; } S[key] = fix ? fix(v) : (v || {}); S.loaded[key] = true; dataChanged(); }));
-  sub('ob', 'ob', v => ({ heads: (v || {}).heads || {}, members: (v || {}).members || {} }));
+  sub('ob', 'ob', v => ({ heads: (v || {}).heads || {}, members: (v || {}).members || {}, py: (v || {}).py || {} }));
   sub('vch', 'vch'); sub('bills', 'bills'); sub('runs', 'runs'); sub('brs', 'brs');
 }
 function pickFY() {
@@ -2184,38 +2188,58 @@ const dueIm = () => (SET().billing.im || 'A') !== 'A';
 page('obal', {
   render(tab) {
     tab = tab || LS.get('sb_obt', 'heads'); LS.set('sb_obt', tab);
-    const I = IDS(); const locked = S.fy.closed;
+    const I = IDS(); const locked = S.fy.closed; const dis = locked || !canEdit() ? 'disabled' : '';
     const memOB = sum(Object.keys(S.members), mid => { const o = ENG.memberOB(S, mid); return o.p + o.n + o.i; });
     let dr = 0, cr = 0; for (const [hid, v] of Object.entries(S.ob.heads || {})) { if (hid === I.dues) continue; if (v > 0) dr += v; else cr -= v; } if (memOB > 0) dr += memOB; else cr -= memOB;
     const diff = r2(dr - cr);
     const heads = Object.entries(S.heads).filter(([id, h]) => h && id !== I.dues).sort((a, b) => ['Liabilities', 'Assets', 'Income', 'Expenses'].indexOf(a[1].grp) - ['Liabilities', 'Assets', 'Income', 'Expenses'].indexOf(b[1].grp) || (a[1].sub || '').localeCompare(b[1].sub || '') || String(a[1].code).localeCompare(String(b[1].code)));
     const mem = Object.entries(S.members).sort((a, b) => sortFlat(a[1], b[1]));
+    const showN = LS.get('sb_obn', '0') === '1' || mem.some(([id]) => ENG.memberOB(S, id).n);
+    let body = '';
+    if (tab === 'heads') body = `<div class="alert a-info small">Balances as on ${fd(S.fy.start)} for assets and liabilities (last year's closing). These also print as the <b>Previous Year</b> column of the Balance Sheet.</div><div class="tw tall"><table><thead><tr><th>Group</th><th>Head</th><th class="n">Debit</th><th class="n">Credit</th></tr></thead><tbody>
+        ${heads.filter(([id, h]) => h.grp === 'Assets' || h.grp === 'Liabilities' || (S.ob.heads || {})[id]).map(([id, h]) => { const v = +(S.ob.heads || {})[id] || 0; return `<tr><td class="small"><span class="gtag gt-${h.grp}">${h.grp}</span> ${esc(h.sub || '')}</td><td>${esc(h.name)}</td><td><input class="num" data-h="${id}" data-s="dr" value="${v > 0 ? v : ''}" ${dis}></td><td><input class="num" data-h="${id}" data-s="cr" value="${v < 0 ? -v : ''}" ${dis}></td></tr>`; }).join('')}
+        <tr class="tot"><td></td><td>Dues from Members (from Members tab)</td><td class="n">${memOB > 0 ? fmt(memOB) : ''}</td><td class="n">${memOB < 0 ? fmt(-memOB) : ''}</td></tr></tbody></table></div>`;
+    else if (tab === 'members') body = `<div class="alert a-info small">Enter each member's dues as on ${fd(S.fy.start)}: <b>Principal</b> (attracts interest) and <b>Interest</b> (unpaid interest, cleared first when they pay). The total is added automatically. For an advance, enter the principal as a negative amount.</div>
+        <div class="row small" style="margin-bottom:8px"><label class="row" style="margin:0"><input type="checkbox" ${showN ? 'checked' : ''} onchange="LS.set('sb_obn',this.checked?'1':'0');render()"> Show "Non-interest dues" column</label><span class="muted">— only for dues that must never attract interest (e.g. GST, parking, a supplementary bill marked "no interest").</span></div>
+        ${dueIm() ? `<div class="alert a-info small">Due-date interest is on (${esc(ENG.IM[SET().billing.im])}). <b>Accrued interest b/f</b> = interest for the last period of last year not yet billed; it is added to the first bill. It is not part of the balance.</div>` : ''}
+        <div class="tw tall"><table><thead><tr><th>Flat</th><th>Member</th><th class="n">Opening principal</th><th class="n">Opening interest</th>${showN ? '<th class="n">Non-interest dues</th>' : ''}<th class="n">Total</th>${dueIm() ? '<th class="n">Accrued interest b/f</th>' : ''}</tr></thead><tbody>
+        ${mem.map(([id, m]) => { const o = ENG.memberOB(S, id); const ai = +(((S.ob.members || {})[id] || {}).ai) || 0; const cell = (k, v) => `<td><input class="num" data-k="${k}" value="${v || ''}" ${dis} style="width:120px" oninput="obRowTot(this)"></td>`;
+          return `<tr data-m="${id}"><td class="b">${esc(flatLbl(m))}</td><td class="small">${esc(m.name)}</td>${cell('p', o.p)}${cell('i', o.i)}${showN ? cell('n', o.n) : (o.n ? `<input type="hidden" data-k="n" value="${o.n}">` : '')}<td class="n b" data-t>${fmt(o.p + o.i + o.n)}</td>${dueIm() ? cell('ai', ai) : (ai ? `<input type="hidden" data-k="ai" value="${ai}">` : '')}</tr>`; }).join('')}
+        <tr class="tot"><td colspan="2">Total</td><td class="n" id="ob-tp"></td><td class="n" id="ob-ti"></td>${showN ? '<td class="n" id="ob-tn"></td>' : ''}<td class="n" id="ob-tt"></td>${dueIm() ? '<td></td>' : ''}</tr></tbody></table></div>`;
+    else { const py = S.ob.py || {}; const ie = heads.filter(([, h]) => h.grp === 'Income' || h.grp === 'Expenses');
+      body = `<div class="alert a-info small">Last year's Income & Expenditure figures, printed as the <b>Previous Year</b> column of this year's Income & Expenditure Account. They fill in automatically when last year is closed in SocietyBooks (and from a MAXX closing-balance import); type them here only for the first year.</div>
+        <div class="tw tall"><table><thead><tr><th>Group</th><th>Head</th><th class="n">Last year amount ₹</th></tr></thead><tbody>${ie.map(([id, h]) => `<tr><td class="small"><span class="gtag gt-${h.grp}">${h.grp}</span> ${esc(h.sub || '')}</td><td>${esc(h.name)}</td><td><input class="num" data-py="${id}" value="${+py[id] || ''}" ${dis} oninput="obPyTot()"></td></tr>`).join('')}
+        <tr class="tot"><td colspan="2" id="py-sum"></td><td></td></tr></tbody></table></div>`; }
     shell('🏁 Opening Balances', `As on ${fd(S.fy.start)} · FY ${esc(S.fy.label)}`, `${canEdit() && !locked ? `<button class="ghost" onclick="obImport('${tab}')">📥 Import Excel</button>` : ''}<button class="ghost" onclick="obExport()">📤 Excel</button>`,
       `${locked ? '<div class="alert a-warn">This year is closed — openings came from last year\'s closing. Reopen the year to change them.</div>' : ''}
       <div class="grid g3" style="margin-bottom:14px"><div class="stat"><div class="v">₹${fmt(dr)}</div><div class="l">Total debit openings</div></div><div class="stat"><div class="v">₹${fmt(cr)}</div><div class="l">Total credit openings</div></div><div class="stat"><div class="v ${diff ? 'dr' : 'cr'}">${diff ? '₹' + fmt(diff) : '✓ Balanced'}</div><div class="l">${diff ? 'Difference (Dr − Cr)' : 'Openings agree'}</div></div></div>
-      <div class="tabs"><button class="${tab === 'heads' ? 'on' : ''}" onclick="go('obal','heads')">Account heads</button><button class="${tab === 'members' ? 'on' : ''}" onclick="go('obal','members')">Members' dues (₹${fmt(memOB)})</button></div>
-      <div data-form>${tab === 'heads' ? `<div class="tw tall"><table><thead><tr><th>Group</th><th>Head</th><th class="n">Debit</th><th class="n">Credit</th></tr></thead><tbody>
-        ${heads.map(([id, h]) => { const v = +(S.ob.heads || {})[id] || 0; return `<tr><td class="small"><span class="gtag gt-${h.grp}">${h.grp}</span> ${esc(h.sub || '')}</td><td>${esc(h.name)}</td><td><input class="num" data-h="${id}" data-s="dr" value="${v > 0 ? v : ''}" ${locked || !canEdit() ? 'disabled' : ''}></td><td><input class="num" data-h="${id}" data-s="cr" value="${v < 0 ? -v : ''}" ${locked || !canEdit() ? 'disabled' : ''}></td></tr>`; }).join('')}
-        <tr class="tot"><td></td><td>Dues from Members (from Members tab)</td><td class="n">${memOB > 0 ? fmt(memOB) : ''}</td><td class="n">${memOB < 0 ? fmt(-memOB) : ''}</td></tr></tbody></table></div>`
-      : `<div class="alert a-info small">Enter each member's dues at the start of the year. <b>Principal</b> attracts interest; <b>Interest</b> is unpaid interest (cleared first when they pay). Enter an advance as a negative principal.</div>
-        ${dueIm() ? `<div class="alert a-info small">Due-date interest is on (${esc(ENG.IM[SET().billing.im])}). <b>Accrued interest b/f</b> = interest for the last period of the previous year that hasn't been billed yet; it is added to the first bill of this year. It is not part of the balance.</div>` : ''}
-        <div class="tw tall"><table><thead><tr><th>Flat</th><th>Member</th><th class="n">Principal</th><th class="n">Interest</th><th class="n">Non-interest</th>${dueIm() ? '<th class="n">Accrued interest b/f</th>' : ''}<th class="n">Total</th></tr></thead><tbody>
-        ${mem.map(([id, m]) => { const o = ENG.memberOB(S, id); const ai = +(((S.ob.members || {})[id] || {}).ai) || 0; return `<tr data-m="${id}"><td class="b">${esc(flatLbl(m))}</td><td class="small">${esc(m.name)}</td>${['p', 'i', 'n', ...(dueIm() ? ['ai'] : [])].map(k => `<td><input class="num" data-k="${k}" value="${(k === 'ai' ? ai : o[k]) || ''}" ${locked || !canEdit() ? 'disabled' : ''} style="width:110px"></td>`).join('')}<td class="n">${fmt(o.p + o.i + o.n)}</td></tr>`; }).join('')}</tbody></table></div>`}
-      ${canEdit() && !locked ? `<div class="row" style="margin-top:10px"><button onclick="obSave('${tab}')">💾 Save opening balances</button></div>` : ''}</div>`);
+      <div class="tabs"><button class="${tab === 'heads' ? 'on' : ''}" onclick="go('obal','heads')">Account heads</button><button class="${tab === 'members' ? 'on' : ''}" onclick="go('obal','members')">Members' dues (₹${fmt(memOB)})</button><button class="${tab === 'py' ? 'on' : ''}" onclick="go('obal','py')">Previous year I&E</button></div>
+      <div data-form>${body}
+      ${canEdit() && !locked ? `<div class="row" style="margin-top:10px"><button onclick="obSave('${tab}')">💾 Save ${tab === 'py' ? 'previous-year figures' : 'opening balances'}</button></div>` : ''}</div>`);
+    if (tab === 'members') obColTot(); if (tab === 'py') obPyTot();
   }
 });
+function obRowTot(inp) { const tr = inp.closest('tr'); const t = ['p', 'i', 'n'].reduce((s, k) => s + numv((tr.querySelector(`[data-k="${k}"]`) || {}).value), 0); tr.querySelector('[data-t]').textContent = fmt(t); obColTot(); }
+function obColTot() { const T = { p: 0, i: 0, n: 0 }; $$('tr[data-m]').forEach(tr => ['p', 'i', 'n'].forEach(k => T[k] += numv((tr.querySelector(`[data-k="${k}"]`) || {}).value))); const set = (id, v) => { const e = $(id); if (e) e.textContent = fmt(v); }; set('ob-tp', T.p); set('ob-ti', T.i); set('ob-tn', T.n); set('ob-tt', T.p + T.i + T.n); }
+function obPyTot() { let i = 0, e = 0; $$('[data-py]').forEach(x => { const h = H(x.dataset.py); if (h.grp === 'Income') i += numv(x.value); else e += numv(x.value); }); const el = $('py-sum'); if (el) el.innerHTML = `Income ₹${fmt(i)} · Expenditure ₹${fmt(e)} · ${i - e >= 0 ? 'Surplus' : 'Deficit'} ₹${fmt(Math.abs(i - e))}`; }
 async function obSave(tab) {
   guardEdit(); if (S.fy.closed) throw new Error('Year closed'); const up = {};
-  if (tab === 'heads') { const m = {}; $$('input[data-h]').forEach(i => { const v = numv(i.value); if (!v) return; m[i.dataset.h] = r2((m[i.dataset.h] || 0) + (i.dataset.s === 'dr' ? v : -v)); }); up[`ob/${S.fyId}/heads`] = m; }
-  else { const m = {}; $$('tr[data-m]').forEach(tr => { const o = {}; $$('input', tr).forEach(i => { const v = r2(numv(i.value)); if (v) o[i.dataset.k] = v; }); if (Object.keys(o).length) m[tr.dataset.m] = o; }); up[`ob/${S.fyId}/members`] = m; }
-  if (S.fy.lock && !(await confirmBox('Books are locked for audit. Changing opening balances will change all reports. Continue?'))) return;
-  await commit(up, { a: 'edit', e: 'Opening balances', s: tab }); await recalcMembers(Object.keys(S.members)); toast('Opening balances saved');
+  if (tab === 'heads') { const m = { ...(S.ob.heads || {}) }; $$('input[data-h]').forEach(i => { delete m[i.dataset.h]; }); $$('input[data-h]').forEach(i => { const v = numv(i.value); if (!v) return; m[i.dataset.h] = r2((m[i.dataset.h] || 0) + (i.dataset.s === 'dr' ? v : -v)); }); up[`ob/${S.fyId}/heads`] = m; }
+  else if (tab === 'members') { const m = {}; $$('tr[data-m]').forEach(tr => { const o = {}; $$('input', tr).forEach(i => { const v = r2(numv(i.value)); if (v) o[i.dataset.k] = v; }); if (Object.keys(o).length) m[tr.dataset.m] = o; }); up[`ob/${S.fyId}/members`] = m; }
+  else { const m = {}; $$('[data-py]').forEach(i => { const v = r2(numv(i.value)); if (v) m[i.dataset.py] = v; }); up[`ob/${S.fyId}/py`] = m; }
+  if (tab !== 'py' && S.fy.lock && !(await confirmBox('Books are locked for audit. Changing opening balances will change all reports. Continue?'))) return;
+  await commit(up, { a: 'edit', e: 'Opening balances', s: tab }); if (tab !== 'py') await recalcMembers(Object.keys(S.members)); toast('Saved');
 }
-function obExport() { const I = IDS(); xlsx('Opening_Balances_' + S.fy.label, [{ name: 'Heads', rows: [['Code', 'Head', 'Group', 'Debit', 'Credit'], ...Object.entries(S.heads).filter(([id]) => id !== I.dues).map(([id, h]) => { const v = +(S.ob.heads || {})[id] || 0; return [h.code || '', h.name, h.grp, v > 0 ? v : '', v < 0 ? -v : '']; })], cols: [8, 36, 12, 14, 14] }, { name: 'Members', rows: [['Wing', 'Flat', 'Name', 'Principal', 'Interest', 'Non-interest', 'Accrued interest bf'], ...Object.entries(S.members).sort((a, b) => sortFlat(a[1], b[1])).map(([id, m]) => { const o = ENG.memberOB(S, id); return [m.wing || '', m.flat, m.name, o.p || '', o.i || '', o.n || '', +(((S.ob.members || {})[id] || {}).ai) || '']; })], cols: [7, 8, 30, 14, 14, 14, 16] }]); }
+function obExport() { const I = IDS(); xlsx('Opening_Balances_' + S.fy.label, [{ name: 'Heads', rows: [['Code', 'Head', 'Group', 'Debit', 'Credit'], ...Object.entries(S.heads).filter(([id]) => id !== I.dues).map(([id, h]) => { const v = +(S.ob.heads || {})[id] || 0; return [h.code || '', h.name, h.grp, v > 0 ? v : '', v < 0 ? -v : '']; })], cols: [8, 36, 12, 14, 14] }, { name: 'Members', rows: [['Wing', 'Flat', 'Name', 'Principal', 'Interest', 'Non-interest', 'Accrued interest bf'], ...Object.entries(S.members).sort((a, b) => sortFlat(a[1], b[1])).map(([id, m]) => { const o = ENG.memberOB(S, id); return [m.wing || '', m.flat, m.name, o.p || '', o.i || '', o.n || '', +(((S.ob.members || {})[id] || {}).ai) || '']; })], cols: [7, 8, 30, 14, 14, 14, 16] }, { name: 'Previous year IE', rows: [['Code', 'Head', 'Group', 'Amount'], ...Object.entries(S.heads).filter(([, h]) => h && (h.grp === 'Income' || h.grp === 'Expenses')).map(([id, h]) => [h.code || '', h.name, h.grp, +((S.ob.py || {})[id]) || ''])], cols: [8, 36, 12, 14] }]); }
 function obImport(tab) {
   pickFile('.xlsx,.xls,.csv', async f => {
     try {
       const rows = await readSheet(f); const g = (r, ...n) => { for (const x of n) { const k = Object.keys(r).find(k => k.toLowerCase().replace(/[^a-z]/g, '') === x); if (k && r[k] !== '') return r[k]; } return ''; };
+      if (tab === 'py') {
+        const byName = {}, byCode = {}; for (const [id, h] of Object.entries(S.heads)) { byName[h.name.toLowerCase()] = id; if (h.code) byCode[String(h.code).toLowerCase()] = id; }
+        let n = 0; for (const r of rows) { const id = byCode[String(g(r, 'code')).toLowerCase()] || byName[String(g(r, 'head', 'name', 'account', 'particulars')).toLowerCase().trim()]; const i = id && document.querySelector(`input[data-py="${id}"]`); if (i) { i.value = numv(g(r, 'amount', 'lastyear', 'previousyear', 'balance')) || ''; n++; } }
+        obPyTot(); return toast(`${n} heads filled — review and Save`);
+      }
       if (tab === 'heads') {
         const byName = {}, byCode = {}; for (const [id, h] of Object.entries(S.heads)) { byName[h.name.toLowerCase()] = id; if (h.code) byCode[String(h.code).toLowerCase()] = id; }
         let n = 0, miss = []; for (const r of rows) { const id = byCode[String(g(r, 'code')).toLowerCase()] || byName[String(g(r, 'head', 'name', 'account', 'accountname')).toLowerCase().trim()]; if (!id) { if (g(r, 'head', 'name')) miss.push(g(r, 'head', 'name')); continue; } const v = numv(g(r, 'debit', 'dr')) - numv(g(r, 'credit', 'cr')) + numv(g(r, 'balance', 'amount')); const i1 = document.querySelector(`input[data-h="${id}"][data-s="dr"]`), i2 = document.querySelector(`input[data-h="${id}"][data-s="cr"]`); if (i1) { i1.value = v > 0 ? r2(v) : ''; i2.value = v < 0 ? r2(-v) : ''; n++; } }
@@ -2577,7 +2601,7 @@ function bookPage(kind) {
       if (!opts.length) return shell(kind === 'cash' ? '💵 Cash Book' : '🏦 Bank Book', '', '', `<div class="alert a-warn">No ${kind} account heads. Create one in Account Heads with type “${kind}”.</div>`);
       let hid = arg || RP.get('bk_' + kind, ''); if (!opts.some(o => o.v === hid)) hid = opts[0].v; CUR.arg = hid;
       const title = kind === 'cash' ? '💵 Cash Book' : kind === 'bank' ? '🏦 Bank Book' : '📖 General Ledger';
-      shell(title, '', `<button class="ghost" onclick="bookOut('${kind}','x')">📥 Excel</button><button class="ghost" onclick="bookOut('${kind}','p')">🖨 Print</button>`,
+      shell(title, '', `<button class="ghost" onclick="bookOut('${kind}','x')">📥 Excel</button><button class="ghost" onclick="bookOut('${kind}','p')">🖨 Print</button>${kind === 'gl' ? `<button onclick="allGL('p')">🖨 All ledgers</button><button class="ghost" onclick="allGL('x')">📥 All ledgers (Excel)</button>` : ''}`,
         `<div style="max-width:420px;margin-bottom:10px">${accPicker('bk-h', opts, { value: hid, onchange: 'bookPick' })}</div>${rangeBar('bk')}<div id="bk-res"></div>`);
       this.refresh();
     },
@@ -2592,7 +2616,7 @@ page('cashbook', bookPage('cash')); page('bankbook', bookPage('bank')); page('gl
 page('mledger', {
   render(mid) {
     mid = mid || RP.get('ml', ''); if (!S.members[mid]) mid = (memberOptions('', true)[0] || {}).v; CUR.arg = mid;
-    shell('👤 Member Ledger', 'Bills, receipts and adjustments with interest/principal split', mid ? `<button class="ghost" onclick="mlOut('x')">📥 Excel</button><button class="ghost" onclick="mlOut('p')">🖨 Print</button>${canEdit() ? `<button class="ghost" onclick="shareLedger(CUR.arg)">🔗 Share link</button>` : ''}` : '',
+    shell('👤 Member Ledger', 'Bills, receipts and adjustments with interest/principal split', `<button onclick="allML('p')">🖨 All members</button><button class="ghost" onclick="allML('x')">📥 All members (Excel)</button>` + (mid ? `<button class="ghost" onclick="mlOut('x')">📥 Excel</button><button class="ghost" onclick="mlOut('p')">🖨 Print</button>${canEdit() ? `<button class="ghost" onclick="shareLedger(CUR.arg)">🔗 Share link</button>` : ''}` : ''),
       `<div style="max-width:420px;margin-bottom:12px">${accPicker('ml-m', memberOptions('', true), { value: mid, ph: 'Select member', onchange: 'mlPick' })}</div><div id="ml-res"></div>`);
     this.refresh();
   },
@@ -2630,58 +2654,91 @@ function tbOut(how) { const d = val('tb-d'); const tb = ENG.trialBalance(S, d); 
   printReport('Trial Balance', 'As on ' + fd(d), `<table><thead><tr><th>Account head</th><th class="n">Debit ₹</th><th class="n">Credit ₹</th></tr></thead><tbody>${tb.rows.map(r => `<tr><td>${esc(r.h.name)}</td><td class="n">${r.cl > 0 ? fmt(r.cl) : ''}</td><td class="n">${r.cl < 0 ? fmt(-r.cl) : ''}</td></tr>`).join('')}<tr class="tot"><td>Total</td><td class="n">${fmt(tb.cdr)}</td><td class="n">${fmt(tb.ccr)}</td></tr></tbody></table>`); }
 
 // ── T-format builder (screen + Excel + print share one list) ─────────────
-function groupT(items, opts = {}) { // items: {sub, h, amt, hid}
+function groupT(items, opts = {}) { // items: {sub, h, amt, hid, pv}
   const out = []; const subs = {}; items.forEach(x => (subs[x.sub] = subs[x.sub] || []).push(x));
-  for (const [sub, xs] of Object.entries(subs)) { const t = sum(xs, x => x.amt); if (xs.length === 1 && xs[0].h.name === sub) { out.push({ k: 'l', label: sub, amt: t, hid: xs[0].hid }); continue; } out.push({ k: 'g', label: sub }); xs.forEach(x => out.push({ k: 's', label: x.h.name, amt: x.amt, hid: x.hid })); out.push({ k: 'gt', label: 'Total ' + sub, amt: t }); }
+  for (const [sub, xs] of Object.entries(subs)) {
+    const t = sum(xs, x => x.amt), pt = sum(xs, x => x.pv || 0);
+    if (xs.length === 1 && xs[0].h.name === sub) { out.push({ k: 'l', label: sub, amt: t, pv: pt, hid: xs[0].hid }); continue; }
+    out.push({ k: 'g', label: sub }); xs.forEach(x => out.push({ k: 's', label: x.h.name, amt: x.amt, pv: x.pv || 0, hid: x.hid })); out.push({ k: 'gt', label: 'Total ' + sub, amt: t, pv: pt });
+  }
   return out;
 }
-const tHtml = rows => rows.map(r => r.k === 'g' ? `<div class="tl g">${esc(r.label)}</div>` : `<div class="tl ${r.k === 's' ? 's' : ''} ${r.k === 'gt' ? 'gt' : ''} ${r.k === 'tt' ? 'tt' : ''} ${r.click ? 'click' : ''}" ${r.click ? `onclick="${r.click}"` : ''}><span>${esc(r.label)}</span><span class="a">${r.amt == null ? '' : fmt(r.amt)}</span></div>${r.after || ''}`).join('');
-const tPrint = rows => rows.map(r => r.k === 'g' ? `<div class="tl g">${esc(r.label)}</div>` : `<div class="tl ${r.k === 's' ? 's' : ''} ${r.k === 'tt' ? 'tt' : ''}${r.k === 'gt' ? ' b' : ''}"><span>${esc(r.label)}</span><span class="a">${r.amt == null ? '' : fmt(r.amt)}</span></div>`).join('');
-const tX = rows => rows.map(r => [(r.k === 's' ? '    ' : '') + r.label, r.k === 'g' ? null : r.amt]);
-function pad2(a, b) { const n = Math.max(a.length, b.length); while (a.length < n - 1) a.splice(a.length - 1, 0, { k: 'sp', label: '' }); while (b.length < n - 1) b.splice(b.length - 1, 0, { k: 'sp', label: '' }); }
+const pvCell = (r, on) => on ? `<span class="p">${r.k === 'g' || r.pv == null || (r.k !== 'tt' && !r.pv) ? '' : fmt(r.pv)}</span>` : '';
+const amtCell = r => `<span class="a">${r.amt == null ? '' : !r.amt && r.k !== 'tt' && r.pv ? '–' : fmt(r.amt)}</span>`;
+const tHead = (title, on) => on ? `<div class="th tph"><span class="p">Previous Year ₹</span><span>${title}</span><span class="a">Current Year ₹</span></div>` : `<div class="th">${title}</div>`;
+const tHtml = (rows, on) => rows.map(r => r.k === 'g' ? `<div class="tl g">${pvCell(r, on)}<span class="lb">${esc(r.label)}</span></div>` : `<div class="tl ${r.k === 's' ? 's' : ''} ${r.k === 'gt' ? 'gt' : ''} ${r.k === 'tt' ? 'tt' : ''} ${r.click ? 'click' : ''}" ${r.click ? `onclick="${r.click}"` : ''}>${pvCell(r, on)}<span class="lb">${esc(r.label)}</span>${amtCell(r)}</div>${r.after || ''}`).join('');
+const tPHead = (title, on) => on ? `<div class="h tph"><span class="p">Previous Year ₹</span><span>${title}</span><span class="a">Current Year ₹</span></div>` : `<div class="h">${title}</div>`;
+const tPrint = (rows, on) => rows.map(r => r.k === 'g' ? `<div class="tl g">${pvCell(r, on)}<span class="lb">${esc(r.label)}</span></div>` : `<div class="tl ${r.k === 's' ? 's' : ''} ${r.k === 'tt' ? 'tt' : ''}${r.k === 'gt' ? ' b' : ''}">${pvCell(r, on)}<span class="lb">${esc(r.label)}</span>${amtCell(r)}</div>`).join('');
+const tX = (rows, on) => rows.map(r => on ? [(r.k === 's' ? '    ' : '') + r.label, r.k === 'g' || (r.zero === false && !r.amt) ? null : r.amt, r.k === 'g' || r.pv == null || (r.k !== 'tt' && !r.pv) ? null : r.pv] : [(r.k === 's' ? '    ' : '') + r.label, r.k === 'g' ? null : r.amt]);
+const showPY = () => LS.get('sb_py', '1') === '1';
+const pyToggle = pg => `<label class="row small" style="margin:0"><input type="checkbox" ${showPY() ? 'checked' : ''} onchange="LS.set('sb_py',this.checked?'1':'0');PAGES.${pg}.refresh()"> Previous year column</label>`;
+
+// Previous-year figures: Balance Sheet = this year's openings; I&E = figures saved at year-end (or typed in Opening Balances)
+function prevBS() {
+  const I = IDS(); const ob = S.ob.heads || {}; const out = { heads: {}, dues: 0, adv: 0, ie: 0, any: false };
+  for (const [hid, v] of Object.entries(ob)) { if (!+v || hid === I.dues) continue; out.any = true; if (hid === I.ie) out.ie = r2(-v); else out.heads[hid] = +v; }
+  for (const mid of Object.keys(S.members)) { const o = ENG.memberOB(S, mid); const t = r2(o.p + o.n + o.i); if (t > 0) out.dues = r2(out.dues + t); else if (t < 0) out.adv = r2(out.adv - t); if (t) out.any = true; }
+  return out;
+}
+function prevIE() { const py = (S.ob && S.ob.py) || {}; const out = { inc: {}, exp: {}, ti: 0, te: 0, any: false };
+  for (const [hid, v] of Object.entries(py)) { const h = S.heads[hid]; if (!h || !+v) continue; out.any = true; if (h.grp === 'Income') { out.inc[hid] = +v; out.ti += +v; } else if (h.grp === 'Expenses') { out.exp[hid] = +v; out.te += +v; } }
+  out.ti = r2(out.ti); out.te = r2(out.te); out.surplus = r2(out.ti - out.te); return out; }
 
 // ── Income & Expenditure ─────────────────────────────────────────────────
 function ieRows(d) {
-  const ie = ENG.incomeExpenditure(S, d);
-  const L = groupT(ie.exp), R = groupT(ie.inc);
-  if (ie.surplus >= 0) L.push({ k: 'l', label: 'Excess of Income over Expenditure (Surplus)', amt: ie.surplus }); else R.push({ k: 'l', label: 'Excess of Expenditure over Income (Deficit)', amt: -ie.surplus });
-  const tot = r2(Math.max(ie.ti, ie.te)); L.push({ k: 'tt', label: 'TOTAL', amt: tot }); R.push({ k: 'tt', label: 'TOTAL', amt: tot });
-  return { ie, L, R };
+  const ie = ENG.incomeExpenditure(S, d); const py = prevIE(); const on = showPY() && py.any;
+  const add = (list, map, grp) => { const have = new Set(list.map(x => x.hid)); list.forEach(x => x.pv = map[x.hid] || 0); for (const [hid, v] of Object.entries(map)) if (!have.has(hid)) { const h = S.heads[hid]; list.push({ hid, h, sub: h.sub || (grp === 'Income' ? 'Other Income' : 'Other Expenses'), amt: 0, pv: v }); } };
+  const inc = ie.inc.map(x => ({ ...x })), exp = ie.exp.map(x => ({ ...x })); if (on) { add(inc, py.inc, 'Income'); add(exp, py.exp, 'Expenses'); }
+  const so = (a, b) => (a.sub === 'Contribution from Members' ? 0 : 1) - (b.sub === 'Contribution from Members' ? 0 : 1) || a.sub.localeCompare(b.sub) || String(a.h.code).localeCompare(String(b.h.code)); inc.sort(so); exp.sort(so);
+  const L = groupT(exp), R = groupT(inc);
+  if (ie.surplus >= 0 || (on && py.surplus >= 0)) L.push({ k: 'l', label: 'Excess of Income over Expenditure (Surplus)', amt: ie.surplus >= 0 ? ie.surplus : null, pv: on && py.surplus >= 0 ? py.surplus : null });
+  if (ie.surplus < 0 || (on && py.surplus < 0)) R.push({ k: 'l', label: 'Excess of Expenditure over Income (Deficit)', amt: ie.surplus < 0 ? -ie.surplus : null, pv: on && py.surplus < 0 ? -py.surplus : null });
+  const tot = r2(Math.max(ie.ti, ie.te)), ptot = r2(Math.max(py.ti, py.te));
+  L.push({ k: 'tt', label: 'TOTAL', amt: tot, pv: on ? ptot : null }); R.push({ k: 'tt', label: 'TOTAL', amt: tot, pv: on ? ptot : null });
+  return { ie, L, R, on, py };
 }
 page('ie', {
-  render() { shell('📊 Income & Expenditure Account', '', `<button class="ghost" onclick="ieOut('x')">📥 Excel (T-format)</button><button class="ghost" onclick="ieOut('p')">🖨 Print</button>`, `<div class="toolbar" data-form><label style="margin:0">For the period up to</label><input type="date" id="ie-d" value="${S.fy.end}" min="${S.fy.start}" max="${S.fy.end}" onchange="PAGES.ie.refresh()"></div><div id="ie-res"></div>`); this.refresh(); },
-  refresh() { const { ie, L, R } = ieRows(val('ie-d')); L.forEach(r => r.hid && (r.click = `go('gl','${r.hid}')`)); R.forEach(r => r.hid && (r.click = `go('gl','${r.hid}')`));
-    $('ie-res').innerHTML = `<div class="tfmt"><div><div class="th">EXPENDITURE</div>${tHtml(L)}</div><div><div class="th">INCOME</div>${tHtml(R)}</div></div><div class="card center" style="margin-top:12px"><b class="${ie.surplus >= 0 ? 'cr' : 'dr'}" style="font-size:17px">${ie.surplus >= 0 ? 'Surplus' : 'Deficit'} ₹${fmt(Math.abs(ie.surplus))}</b> <span class="small muted">· Contribution from Members ₹${fmt(sum(ie.inc.filter(x => x.sub === 'Contribution from Members'), x => x.amt))}</span></div>`; }
+  render() { shell('📊 Income & Expenditure Account', '', `<button class="ghost" onclick="ieOut('x')">📥 Excel (T-format)</button><button class="ghost" onclick="ieOut('p')">🖨 Print</button>`, `<div class="toolbar" data-form><label style="margin:0">For the period up to</label><input type="date" id="ie-d" value="${S.fy.end}" min="${S.fy.start}" max="${S.fy.end}" onchange="PAGES.ie.refresh()">${pyToggle('ie')}<span id="ie-pyn" class="small muted"></span></div><div id="ie-res"></div>`); this.refresh(); },
+  refresh() { const { ie, L, R, on, py } = ieRows(val('ie-d')); L.forEach(r => r.hid && (r.click = `go('gl','${r.hid}')`)); R.forEach(r => r.hid && (r.click = `go('gl','${r.hid}')`));
+    $('ie-pyn').innerHTML = showPY() && !py.any ? `No previous-year figures yet — <a href="#" onclick="go('obal','py');return false">enter them</a> (filled automatically after year-end).` : '';
+    $('ie-res').innerHTML = `<div class="tfmt ${on ? 'haspv' : ''}"><div>${tHead('EXPENDITURE', on)}${tHtml(L, on)}</div><div>${tHead('INCOME', on)}${tHtml(R, on)}</div></div><div class="card center" style="margin-top:12px"><b class="${ie.surplus >= 0 ? 'cr' : 'dr'}" style="font-size:17px">${ie.surplus >= 0 ? 'Surplus' : 'Deficit'} ₹${fmt(Math.abs(ie.surplus))}</b> <span class="small muted">· Contribution from Members ₹${fmt(sum(ie.inc.filter(x => x.sub === 'Contribution from Members'), x => x.amt))}</span></div>`; }
 });
-function ieOut(how) { const d = val('ie-d'); const { L, R } = ieRows(d); const t = `Income & Expenditure Account for the period ${fd(S.fy.start)} to ${fd(d)}`;
-  if (how === 'x') return xlsxT('IE_Account_' + S.fy.label, t, 'EXPENDITURE', 'INCOME', tX(L), tX(R));
-  printReport('Income & Expenditure Account', `For the period ${fd(S.fy.start)} to ${fd(d)}`, `<div class="tf"><div><div class="h">EXPENDITURE</div>${tPrint(L)}</div><div><div class="h">INCOME</div>${tPrint(R)}</div></div>${signBlock(designations())}`); }
-const designations = () => { const l = SET().letter; return ['Chairman', 'Secretary', 'Treasurer'].map((x, i) => [l.chair, l.sec, l.treas][i] ? x : x); };
+function ieOut(how) { const d = val('ie-d'); const { L, R, on } = ieRows(d); const t = `Income & Expenditure Account for the period ${fd(S.fy.start)} to ${fd(d)}`;
+  if (how === 'x') return xlsxT('IE_Account_' + S.fy.label, t, 'EXPENDITURE', 'INCOME', tX(L, on), tX(R, on), on);
+  printReport('Income & Expenditure Account', `For the period ${fd(S.fy.start)} to ${fd(d)}`, `<div class="tf ${on ? 'haspv' : ''}"><div>${tPHead('EXPENDITURE', on)}${tPrint(L, on)}</div><div>${tPHead('INCOME', on)}${tPrint(R, on)}</div></div>${signBlock(designations())}`); }
+const designations = () => ['Chairman', 'Secretary', 'Treasurer'];
 
 // ── Balance Sheet ────────────────────────────────────────────────────────
 function bsRows(d) {
-  const bs = ENG.balanceSheet(S, d);
-  const L = groupT(bs.liabs), R = groupT(bs.assets);
-  if (bs.tadv) { L.push({ k: 'l', label: 'Advance received from Members', amt: bs.tadv, click: `toggleEl('bs-adv')`, after: `<div id="bs-adv" style="display:none;background:var(--soft)">${bs.adv.map(x => `<div class="tl s small"><span>${esc(memLbl(x.m))}</span><span class="a">${fmt(x.amt)}</span></div>`).join('')}</div>` }); }
-  if (bs.ieTotal >= 0) { L.push({ k: 'g', label: 'Income & Expenditure Account' }, { k: 's', label: 'Balance as per last Balance Sheet', amt: bs.ieOpen }, { k: 's', label: bs.surplus >= 0 ? 'Add: Surplus for the year' : 'Less: Deficit for the year', amt: bs.surplus }, { k: 'gt', label: 'Total I&E Account', amt: bs.ieTotal }); }
-  if (bs.td) R.push({ k: 'l', label: `Dues from Members (${bs.dues.length})`, amt: bs.td, click: `toggleEl('bs-dues')`, after: `<div id="bs-dues" style="display:none;background:var(--soft)">${bs.dues.map(x => `<div class="tl s small click" onclick="go('mledger','${x.mid}')"><span>${esc(memLbl(x.m))}</span><span class="a">${fmt(x.amt)}</span></div>`).join('')}</div>` });
+  const bs = ENG.balanceSheet(S, d); const pb = prevBS(); const on = showPY() && pb.any;
+  const liabs = bs.liabs.map(x => ({ ...x, pv: on ? r2(-(pb.heads[x.hid] || 0)) : 0 })), assets = bs.assets.map(x => ({ ...x, pv: on ? (pb.heads[x.hid] || 0) : 0 }));
+  if (on) { const have = new Set([...liabs, ...assets].map(x => x.hid)); for (const [hid, v] of Object.entries(pb.heads)) { if (have.has(hid)) continue; const h = S.heads[hid]; if (!h) continue; if (h.grp === 'Liabilities') liabs.push({ hid, h, sub: h.sub || 'Current Liabilities', amt: 0, pv: r2(-v) }); else if (h.grp === 'Assets') assets.push({ hid, h, sub: h.sub || 'Current Assets', amt: 0, pv: v }); } }
+  const so = (a, b) => a.sub.localeCompare(b.sub) || String(a.h.code).localeCompare(String(b.h.code)); liabs.sort(so); assets.sort(so);
+  const L = groupT(liabs), R = groupT(assets);
+  if (bs.tadv || (on && pb.adv)) L.push({ k: 'l', label: 'Advance received from Members', amt: bs.tadv, pv: on ? pb.adv : null, click: `toggleEl('bs-adv')`, after: `<div id="bs-adv" style="display:none;background:var(--soft)">${bs.adv.map(x => `<div class="tl s small">${on ? '<span class="p"></span>' : ''}<span class="lb">${esc(memLbl(x.m))}</span><span class="a">${fmt(x.amt)}</span></div>`).join('')}</div>` });
+  const pie = on ? pb.ie : null;
+  if (bs.ieTotal >= 0) L.push({ k: 'g', label: 'Income & Expenditure Account' }, { k: 's', label: 'Balance as per last Balance Sheet', amt: bs.ieOpen }, { k: 's', label: bs.surplus >= 0 ? 'Add: Surplus for the year' : 'Less: Deficit for the year', amt: bs.surplus }, { k: 'gt', label: 'Total I&E Account', amt: bs.ieTotal, pv: pie != null && pie >= 0 ? pie : null });
+  else if (pie != null && pie > 0) L.push({ k: 'l', label: 'Income & Expenditure Account', amt: null, pv: pie });
+  if (bs.td || (on && pb.dues)) R.push({ k: 'l', label: `Dues from Members (${bs.dues.length})`, amt: bs.td, pv: on ? pb.dues : null, click: `toggleEl('bs-dues')`, after: `<div id="bs-dues" style="display:none;background:var(--soft)">${bs.dues.map(x => `<div class="tl s small click" onclick="go('mledger','${x.mid}')">${on ? '<span class="p"></span>' : ''}<span class="lb">${esc(memLbl(x.m))}</span><span class="a">${fmt(x.amt)}</span></div>`).join('')}</div>` });
   if (bs.orphan) (bs.orphan > 0 ? R : L).push({ k: 'l', label: 'Dues (unallocated)', amt: Math.abs(bs.orphan) });
-  if (bs.ieTotal < 0) R.push({ k: 'g', label: 'Income & Expenditure Account (Debit)' }, { k: 's', label: 'Balance as per last Balance Sheet', amt: -bs.ieOpen }, { k: 's', label: bs.surplus >= 0 ? 'Less: Surplus for the year' : 'Add: Deficit for the year', amt: -bs.surplus }, { k: 'gt', label: 'Total', amt: -bs.ieTotal });
+  if (bs.ieTotal < 0) R.push({ k: 'g', label: 'Income & Expenditure Account (Debit)' }, { k: 's', label: 'Balance as per last Balance Sheet', amt: -bs.ieOpen }, { k: 's', label: bs.surplus >= 0 ? 'Less: Surplus for the year' : 'Add: Deficit for the year', amt: -bs.surplus }, { k: 'gt', label: 'Total', amt: -bs.ieTotal, pv: pie != null && pie < 0 ? -pie : null });
+  else if (pie != null && pie < 0) R.push({ k: 'l', label: 'Income & Expenditure Account (Debit)', amt: null, pv: -pie });
   if (Math.abs(bs.diff) > 0.009) (bs.diff > 0 ? L : R).push({ k: 'l', label: '⚠ Difference in opening balances', amt: Math.abs(bs.diff) });
-  const tot = r2(Math.max(bs.ta, bs.tl)); L.push({ k: 'tt', label: 'TOTAL', amt: tot }); R.push({ k: 'tt', label: 'TOTAL', amt: tot });
-  return { bs, L, R };
+  const pTL = on ? r2(sum(liabs, x => x.pv) + pb.adv + (pie > 0 ? pie : 0)) : null, pTA = on ? r2(sum(assets, x => x.pv) + pb.dues + (pie < 0 ? -pie : 0)) : null;
+  const tot = r2(Math.max(bs.ta, bs.tl)); L.push({ k: 'tt', label: 'TOTAL', amt: tot, pv: pTL }); R.push({ k: 'tt', label: 'TOTAL', amt: tot, pv: pTA });
+  return { bs, L, R, on };
 }
 function toggleEl(id) { const e = $(id); if (e) e.style.display = e.style.display === 'none' ? '' : 'none'; }
 page('bs', {
-  render() { shell('📋 Balance Sheet', '', `<button class="ghost" onclick="bsOut('x')">📥 Excel (T-format)</button><button class="ghost" onclick="bsOut('p')">🖨 Print</button>`, `<div class="toolbar" data-form><label style="margin:0">As on</label><input type="date" id="bs-d" value="${S.fy.end}" min="${S.fy.start}" max="${S.fy.end}" onchange="PAGES.bs.refresh()"><span class="small muted">Click “Dues from Members” or “Advance” to see member-wise detail.</span></div><div id="bs-res"></div>`); this.refresh(); },
-  refresh() { const { bs, L, R } = bsRows(val('bs-d')); $('bs-res').innerHTML = `${Math.abs(bs.diff) > 0.009 ? `<div class="alert a-err">Balance Sheet differs by ₹${fmt(bs.diff)} — usually opening balances don't agree. <a href="#" onclick="go('obal');return false">Check Opening Balances</a></div>` : '<div class="alert a-ok">✓ Balance Sheet tallies</div>'}<div class="tfmt"><div><div class="th">LIABILITIES</div>${tHtml(L)}</div><div><div class="th">ASSETS</div>${tHtml(R)}</div></div>`; }
+  render() { shell('📋 Balance Sheet', '', `<button class="ghost" onclick="bsOut('x')">📥 Excel (T-format)</button><button class="ghost" onclick="bsOut('p')">🖨 Print</button>`, `<div class="toolbar" data-form><label style="margin:0">As on</label><input type="date" id="bs-d" value="${S.fy.end}" min="${S.fy.start}" max="${S.fy.end}" onchange="PAGES.bs.refresh()">${pyToggle('bs')}<span class="small muted">Click “Dues from Members” or “Advance” to see member-wise detail.</span></div><div id="bs-res"></div>`); this.refresh(); },
+  refresh() { const { bs, L, R, on } = bsRows(val('bs-d')); $('bs-res').innerHTML = `${Math.abs(bs.diff) > 0.009 ? `<div class="alert a-err">Balance Sheet differs by ₹${fmt(bs.diff)} — usually opening balances don't agree. <a href="#" onclick="go('obal');return false">Check Opening Balances</a></div>` : '<div class="alert a-ok">✓ Balance Sheet tallies</div>'}<div class="tfmt ${on ? 'haspv' : ''}"><div>${tHead('LIABILITIES', on)}${tHtml(L, on)}</div><div>${tHead('ASSETS', on)}${tHtml(R, on)}</div></div>`; }
 });
-function bsOut(how) { const d = val('bs-d'); const { bs, L, R } = bsRows(d);
-  const Lx = tX(L.filter(r => r.k !== 'sp')), Rx = [];
-  for (const r of R) { Rx.push([(r.k === 's' ? '    ' : '') + r.label, r.k === 'g' ? null : r.amt]); if (r.label.startsWith('Dues from Members')) bs.dues.forEach(x => Rx.push(['      ' + memLbl(x.m), x.amt])); }
-  if (bs.tadv) { const i = Lx.findIndex(x => x[0] === 'Advance received from Members'); bs.adv.forEach((x, k) => Lx.splice(i + 1 + k, 0, ['      ' + memLbl(x.m), x.amt])); }
-  if (how === 'x') return xlsxT('Balance_Sheet_' + S.fy.label, `Balance Sheet as on ${fd(d)}`, 'LIABILITIES', 'ASSETS', Lx, Rx);
-  printReport('Balance Sheet', 'As on ' + fd(d), `<div class="tf"><div><div class="h">LIABILITIES</div>${tPrint(L)}</div><div><div class="h">ASSETS</div>${tPrint(R)}</div></div>${bs.dues.length ? `<h2 class="tt" style="margin-top:14px">Schedule – Dues from Members</h2><table><thead><tr><th>Flat</th><th>Member</th><th class="n">Principal</th><th class="n">Interest</th><th class="n">Total</th></tr></thead><tbody>${bs.dues.map(x => `<tr><td>${esc(flatLbl(x.m))}</td><td>${esc(x.m.name)}</td><td class="n">${fmt(x.P + x.N)}</td><td class="n">${fmt(x.I)}</td><td class="n">${fmt(x.amt)}</td></tr>`).join('')}<tr class="tot"><td colspan="4">Total</td><td class="n">${fmt(bs.td)}</td></tr></tbody></table>` : ''}${signBlock(designations())}`); }
+function bsOut(how) { const d = val('bs-d'); const { bs, L, R, on } = bsRows(d);
+  const Lx = [], Rx = [];
+  for (const r of L) { Lx.push(tX([r], on)[0]); if (r.label === 'Advance received from Members') bs.adv.forEach(x => Lx.push(['      ' + memLbl(x.m), x.amt, null])); }
+  for (const r of R) { Rx.push(tX([r], on)[0]); if (r.label.startsWith('Dues from Members')) bs.dues.forEach(x => Rx.push(['      ' + memLbl(x.m), x.amt, null])); }
+  if (how === 'x') return xlsxT('Balance_Sheet_' + S.fy.label, `Balance Sheet as on ${fd(d)}`, 'LIABILITIES', 'ASSETS', Lx, Rx, on);
+  printReport('Balance Sheet', 'As on ' + fd(d), `<div class="tf ${on ? 'haspv' : ''}"><div>${tPHead('LIABILITIES', on)}${tPrint(L, on)}</div><div>${tPHead('ASSETS', on)}${tPrint(R, on)}</div></div>${bs.dues.length ? `<h2 class="tt" style="margin-top:14px">Schedule – Dues from Members</h2><table><thead><tr><th>Flat</th><th>Member</th><th class="n">Principal</th><th class="n">Interest</th><th class="n">Total</th></tr></thead><tbody>${bs.dues.map(x => `<tr><td>${esc(flatLbl(x.m))}</td><td>${esc(x.m.name)}</td><td class="n">${fmt(x.P + x.N)}</td><td class="n">${fmt(x.I)}</td><td class="n">${fmt(x.amt)}</td></tr>`).join('')}<tr class="tot"><td colspan="4">Total</td><td class="n">${fmt(bs.td)}</td></tr></tbody></table>` : ''}${signBlock(designations())}`); }
 
 // ── Receipts & Payments ──────────────────────────────────────────────────
 function rpRows(f, t) {
@@ -2739,7 +2796,7 @@ function duesWA() { const D = selectedDues().filter(x => x.m.phone); if (!D.leng
 
 // ── Bill register / Receipt register / Collection / GST / TDS ────────────
 page('billreg', {
-  render() { const runs = Object.entries(S.runs || {}).filter(([, r]) => r).sort((a, b) => a[1].d.localeCompare(b[1].d)); shell('🗂 Bill Register', 'Head-wise bill details, by run or for the whole year', `<button class="ghost" onclick="brOut()">📥 Excel</button><button class="ghost" onclick="printMain('Bill Register',$('br-r').selectedOptions[0].text)">🖨 Print</button>`, `<div class="toolbar" data-form><select id="br-r" onchange="PAGES.billreg.refresh()"><option value="">Whole year (summary by member)</option>${runs.map(([k, r]) => `<option value="${k}">${r.supp ? '⊕ ' + esc(r.desc) : perLbl(r.from, r.to)}</option>`).join('')}</select></div><div id="br-res"></div>`); this.refresh(); },
+  render() { const runs = Object.entries(S.runs || {}).filter(([, r]) => r).sort((a, b) => a[1].d.localeCompare(b[1].d)); shell('🗂 Bill Register', 'Head-wise bill details, by run or for the whole year', `<button class="ghost" onclick="brAllOut()">📥 All months (Excel)</button><button class="ghost" onclick="brOut()">📥 Excel</button><button class="ghost" onclick="printMain('Bill Register',$('br-r').selectedOptions[0].text)">🖨 Print</button>`, `<div class="toolbar" data-form><select id="br-r" onchange="PAGES.billreg.refresh()"><option value="">Whole year (summary by member)</option>${runs.map(([k, r]) => `<option value="${k}">${r.supp ? '⊕ ' + esc(r.desc) : perLbl(r.from, r.to)}</option>`).join('')}</select></div><div id="br-res"></div>`); this.refresh(); },
   refresh() { const d = brData(val('br-r')); $('br-res').innerHTML = `<div class="tw tall"><table><thead><tr>${d.head.map((h, i) => `<th class="${i > 2 ? 'n' : ''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${d.rows.map(r => `<tr>${r.map((c, i) => `<td class="${i > 2 ? 'n' : ''}">${i > 2 ? fmt(c) : esc(c)}</td>`).join('')}</tr>`).join('')}<tr class="tot">${d.tot.map((c, i) => `<td class="${i > 2 ? 'n' : ''}">${i > 2 ? fmt(c) : esc(c)}</td>`).join('')}</tr></tbody></table></div>`; }
 });
 function brData(rk) {
@@ -2787,6 +2844,71 @@ page('tdsreg', {
 });
 function tdsOut() { const V = Object.values(S.vch).filter(v => v.tds).sort((a, b) => a.d.localeCompare(b.d)); xlsx('TDS_Register_' + S.fy.label, [{ name: 'TDS', noHead: true, rows: [['Date of payment', 'Voucher', 'Deductee name', 'PAN', 'Section', 'Nature', 'Amount paid/credited', 'Rate %', 'TDS deducted', 'Net paid', 'Society TAN'], ...V.map(v => [fd(v.d), v.no, v.tds.party || '', v.tds.pan || '', v.tds.c, v.tds.desc || '', v.tds.gross, v.tds.r, v.tds.amt, r2(v.tds.gross - v.tds.amt), S.meta.tan || ''])], cols: [12, 12, 28, 12, 8, 26, 14, 7, 12, 12, 12] }]); }
 
+// ── One click: all member ledgers / all general ledgers ──────────────────
+const sheetName = (n, used) => { let b = String(n).replace(/[\\/?*\[\]:]/g, ' ').slice(0, 28).trim() || 'Sheet'; let k = b, i = 2; while (used.has(k.toLowerCase())) k = b.slice(0, 26) + ' ' + i++; used.add(k.toLowerCase()); return k; };
+function allML(how) {
+  const ms = Object.entries(S.members).filter(([, m]) => m).sort((a, b) => sortFlat(a[1], b[1]));
+  openModal({ title: (how === 'p' ? '🖨 Print' : '📥 Excel') + ' — all member ledgers', ok: how === 'p' ? 'Print' : 'Download', body: `<div data-form><label>Which members</label><select id="aml-w"><option value="all">All members (${ms.length})</option><option value="dues">Only members with outstanding dues</option><option value="act">Only members with entries this year</option></select>${how === 'p' ? '<label class="row small" style="margin-top:10px"><input type="checkbox" id="aml-pb" checked> Each member on a new page</label>' : ''}</div>`,
+    onOk: () => { const w = val('aml-w'); const L = ms.map(([mid, m]) => ({ mid, m, ...ledgerRows(mid) })).filter(x => w === 'all' || (w === 'dues' ? x.bal > 0.005 : x.rows.length > 1 || Math.abs(x.bal) > 0.005));
+      if (!L.length) return toast('No members match', 'warn');
+      if (how === 'x') { const used = new Set(['summary']); return xlsx('Member_Ledgers_' + S.fy.label, [{ name: 'Summary', title: 'Member balances FY ' + S.fy.label, rows: [['Wing', 'Flat', 'Member', 'Balance', 'Dr/Cr'], ...L.map(x => [x.m.wing || '', x.m.flat, x.m.name, Math.abs(x.bal), x.bal > 0 ? 'Dr (due)' : x.bal < 0 ? 'Cr (advance)' : ''])], cols: [6, 8, 30, 14, 12] }, ...L.map(x => ({ name: sheetName(flatLbl(x.m) + ' ' + (x.m.name || ''), used), title: `Member Ledger – ${memLbl(x.m)} – FY ${S.fy.label}`, rows: [['Date', 'Particulars', 'Debit', 'Credit', 'Balance'], ...x.rows.map(r => [fd(r.d), r.p, r.dr || '', r.cr || '', drcr(r.b)])], cols: [11, 50, 13, 13, 16] }))]); }
+      const pb = $('aml-pb').checked;
+      const html = L.map((x, k) => `<div class="doc ${pb ? '' : 'nb'}">${letterhead(true)}<h2 class="tt">Member Ledger</h2><div class="center small muted" style="margin:-4px 0 8px">${esc(memLbl(x.m))} · FY ${esc(S.fy.label)}</div><table><thead><tr><th>Date</th><th>Particulars</th><th class="n">Debit</th><th class="n">Credit</th><th class="n">Balance</th></tr></thead><tbody>${x.rows.map(r => `<tr><td>${fd(r.d)}</td><td>${esc(r.p)}</td><td class="n">${r.dr ? fmt(r.dr) : ''}</td><td class="n">${r.cr ? fmt(r.cr) : ''}</td><td class="n">${drcr(r.b)}</td></tr>`).join('')}<tr class="tot"><td colspan="4">${x.bal > 0 ? 'Outstanding' : x.bal < 0 ? 'Advance' : 'Balance'}</td><td class="n">${fmt(Math.abs(x.bal))}</td></tr></tbody></table></div>${pb && k < L.length - 1 ? '<div class="pb"></div>' : ''}`).join(pb ? '' : '<div style="height:16px"></div>');
+      printDoc('All member ledgers', html, { auto: false }); }
+  });
+}
+function allGL(how) {
+  const f = rgF(), t = rgT(); const I = IDS();
+  const grpO = { Liabilities: 1, Assets: 2, Income: 3, Expenses: 4 };
+  const hs = Object.entries(S.heads).filter(([, h]) => h).sort((a, b) => (grpO[a[1].grp] || 9) - (grpO[b[1].grp] || 9) || String(a[1].code || '').localeCompare(String(b[1].code || '')) || a[1].name.localeCompare(b[1].name));
+  const L = hs.map(([hid, h]) => ({ hid, h, st: statement(hid, f, t) })).filter(x => x.st.rows.length || Math.abs(x.st.open) > 0.005);
+  if (!L.length) return toast('No ledgers with entries', 'warn');
+  const sub = `${fd(f)} to ${fd(t)}`;
+  if (how === 'x') { const used = new Set(['index']); return xlsx('General_Ledgers_' + S.fy.label, [{ name: 'Index', title: 'General ledgers ' + sub, rows: [['Code', 'Account head', 'Group', 'Opening', 'Debit', 'Credit', 'Closing'], ...L.map(x => [x.h.code || '', x.h.name, x.h.grp, drcr(x.st.open), x.st.dr, x.st.cr, drcr(x.st.close)])], cols: [8, 36, 12, 16, 14, 14, 16] }, ...L.map(x => ({ name: sheetName(x.h.name, used), title: `${x.h.name} — ${sub}`, rows: stmtXlsx(x.h.name, x.st), cols: [11, 12, 40, 34, 13, 13, 16] }))]); }
+  openModal({ title: '🖨 Print all general ledgers', ok: 'Print', body: `<p class="small">${L.length} account heads with entries or balances, ${esc(sub)}.</p><label class="row small"><input type="checkbox" id="agl-pb"> Each ledger on a new page</label><label class="row small"><input type="checkbox" id="agl-dues"> Skip "Dues from Members" (print member ledgers instead)</label>`,
+    onOk: () => { const pb = $('agl-pb').checked; const X = $('agl-dues').checked ? L.filter(x => x.hid !== I.dues) : L;
+      const one = x => `<h3 style="margin:12px 0 4px;font-size:13px">${esc(x.h.name)} <span class="small muted">(${esc(x.h.grp)}${x.h.sub ? ' · ' + esc(x.h.sub) : ''})</span></h3><table><thead><tr><th>Date</th><th>Vch</th><th>Particulars</th><th class="n">Debit</th><th class="n">Credit</th><th class="n">Balance</th></tr></thead><tbody><tr class="g"><td colspan="3">Opening balance</td><td class="n">${x.st.open > 0 ? fmt(x.st.open) : ''}</td><td class="n">${x.st.open < 0 ? fmt(-x.st.open) : ''}</td><td class="n">${drcr(x.st.open)}</td></tr>${x.st.rows.map(r => `<tr><td>${fd(r.d)}</td><td>${esc(r.no || '')}</td><td>${esc(r.part)}${r.mem ? ' – ' + esc(r.mem) : ''}${r.nar ? `<div class="small muted">${esc(r.nar)}</div>` : ''}</td><td class="n">${r.dr ? fmt(r.dr) : ''}</td><td class="n">${r.cr ? fmt(r.cr) : ''}</td><td class="n">${drcr(r.bal)}</td></tr>`).join('')}<tr class="tot"><td colspan="3">Closing balance</td><td class="n">${fmt(x.st.dr)}</td><td class="n">${fmt(x.st.cr)}</td><td class="n">${drcr(x.st.close)}</td></tr></tbody></table>`;
+      const html = pb ? X.map((x, k) => `<div class="doc">${letterhead(true)}<h2 class="tt">General Ledger</h2><div class="center small muted">${esc(sub)}</div>${one(x)}</div>${k < X.length - 1 ? '<div class="pb"></div>' : ''}`).join('') : `<div class="doc">${letterhead(true)}<h2 class="tt">General Ledger</h2><div class="center small muted" style="margin-bottom:6px">${esc(sub)}</div>${X.map(one).join('')}</div>`;
+      printDoc('All general ledgers', html, { auto: false }); } });
+}
+
+// ── Bill register: every month in one workbook ───────────────────────────
+function brAllOut() {
+  const runs = Object.entries(S.runs || {}).filter(([, r]) => r).sort((a, b) => a[1].d.localeCompare(b[1].d) || (a[1].at || 0) - (b[1].at || 0));
+  if (!runs.length) return toast('No bills this year', 'warn');
+  const used = new Set(['year summary']); const sh = d => [d.head, ...d.rows, d.tot];
+  const ys = brData(''); const sheets = [{ name: 'Year summary', title: 'Bill register – whole year (by member) – FY ' + S.fy.label, rows: sh(ys), cols: [10, 8, 28, ...ys.head.slice(3).map(() => 13)] }];
+  for (const [rk, r] of runs) { const d = brData(rk); const nm = r.supp ? 'Supp ' + (r.desc || fd(r.d)) : perLbl(r.from, r.to); sheets.push({ name: sheetName(nm, used), title: `Bill register – ${nm} (bill date ${fd(r.d)})`, rows: sh(d), cols: [12, 8, 28, ...d.head.slice(3).map(() => 13)] }); }
+  xlsx('Bill_Registers_All_' + S.fy.label, sheets); toast(`${runs.length} months exported in one file`);
+}
+
+// ── Payment register ─────────────────────────────────────────────────────
+function prData() { const f = rgF(), t = rgT(), h = val('pr-h');
+  return Object.values(S.vch).filter(v => v.t === 'P' && v.d >= f && v.d <= t).map(v => { const ls = vLines(v); const cb = ls.find(l => isCB(l.h) && l.cr); const to = ls.filter(l => l.dr);
+    return { d: v.d, no: v.no, to: to.map(l => l.m ? memLbl(M(l.m)) : H(l.h).name).join(', '), party: v.tds ? v.tds.party || '' : '', nar: v.nar || '', mode: v.mode || '', ref: (v.chq || {}).no || v.ref || '', from: cb ? H(cb.h).name : '', h: cb ? cb.h : '', gross: sum(to, l => l.dr), tds: v.tds ? v.tds.amt : 0, net: cb ? cb.cr : 0, at: v.at || 0 }; })
+    .filter(r => !h || r.h === h).sort((a, b) => a.d.localeCompare(b.d) || a.at - b.at); }
+page('payreg', {
+  render() { shell('📤 Payment Register', 'All payments with TDS and mode-wise totals', `<button class="ghost" onclick="prOut()">📥 Excel</button><button class="ghost" onclick="printMain('Payment Register',fd(rgF())+' to '+fd(rgT()))">🖨 Print</button>`, rangeBar('pr', `<select id="pr-h" onchange="PAGES.payreg.refresh()"><option value="">All cash & bank</option>${cbOptions().map(o => `<option value="${o.v}">${esc(o.label)}</option>`).join('')}</select>`) + '<div id="pr-res"></div>'); this.refresh(); },
+  refresh() { const R = prData(); const modes = {}; R.forEach(r => modes[r.mode || 'Cash'] = r2((modes[r.mode || 'Cash'] || 0) + r.net));
+    $('pr-res').innerHTML = `<div class="chips" style="margin-bottom:10px">${Object.entries(modes).map(([m, a]) => `<span class="chip">${esc(m)}: <b>₹${fmt(a)}</b></span>`).join('')}</div><div class="tw tall"><table><thead><tr><th>Date</th><th>Voucher</th><th>Paid for / to</th><th>Mode</th><th>Chq / Ref</th><th>From</th><th class="n">Amount</th><th class="n">TDS</th><th class="n">Net paid</th></tr></thead><tbody>${R.map(r => `<tr><td>${fd(r.d)}</td><td class="mono small">${esc(r.no)}</td><td>${esc(r.to)}${r.party ? ` – ${esc(r.party)}` : ''}${r.nar ? `<div class="small muted">${esc(r.nar)}</div>` : ''}</td><td class="small">${esc(r.mode)}</td><td class="small">${esc(r.ref)}</td><td class="small">${esc(r.from)}</td><td class="n">${fmt(r.gross)}</td><td class="n">${r.tds ? fmt(r.tds) : ''}</td><td class="n">${fmt(r.net)}</td></tr>`).join('') || '<tr><td colspan="9" class="empty">No payments</td></tr>'}<tr class="tot"><td colspan="6">${R.length} payments</td><td class="n">${fmt(sum(R, r => r.gross))}</td><td class="n">${fmt(sum(R, r => r.tds))}</td><td class="n">${fmt(sum(R, r => r.net))}</td></tr></tbody></table></div>`; }
+});
+function prOut() { const R = prData(); xlsx('Payment_Register_' + S.fy.label, [{ name: 'Payments', title: `Payment register ${fd(rgF())} to ${fd(rgT())}`, rows: [['Date', 'Voucher', 'Paid for / to', 'Party', 'Narration', 'Mode', 'Chq / Ref', 'From', 'Amount', 'TDS', 'Net paid'], ...R.map(r => [fd(r.d), r.no, r.to, r.party, r.nar, r.mode, r.ref, r.from, r.gross, r.tds || '', r.net]), ['', '', 'TOTAL', '', '', '', '', '', sum(R, r => r.gross), sum(R, r => r.tds), sum(R, r => r.net)]], cols: [11, 11, 30, 22, 30, 9, 12, 20, 12, 10, 12] }]); }
+
+// ── Journal book (journal vouchers + contra entries) ─────────────────────
+function jbData() { const f = rgF(), t = rgT(), w = val('jb-w') || 'JC';
+  return Object.entries(S.vch).filter(([, v]) => w.includes(v.t) && v.d >= f && v.d <= t).sort((a, b) => a[1].d.localeCompare(b[1].d) || (a[1].at || 0) - (b[1].at || 0)); }
+const jbAcc = l => (l.m ? memLbl(M(l.m)) + (l.al ? ` (${{ I: 'interest', P: 'principal', N: 'non-interest' }[l.al] || ''})` : '') : H(l.h).name);
+page('jbook', {
+  render() { shell('📓 Journal Book', 'Journal vouchers and contra entries with every debit and credit', `<button class="ghost" onclick="jbOut()">📥 Excel</button><button class="ghost" onclick="printMain('Journal Book',fd(rgF())+' to '+fd(rgT()))">🖨 Print</button>`, rangeBar('jb', `<select id="jb-w" onchange="PAGES.jbook.refresh()"><option value="JC">Journal + Contra</option><option value="J">Journal only</option><option value="C">Contra only</option></select>`) + '<div id="jb-res"></div>'); this.refresh(); },
+  refresh() { const V = jbData(); let tdr = 0, tcr = 0;
+    const rows = V.map(([id, v]) => { const ls = vLines(v); tdr += sum(ls, l => l.dr); tcr += sum(ls, l => l.cr);
+      return ls.map((l, i) => `<tr${i === 0 ? ' style="border-top:2px solid var(--border2)"' : ''}>${i === 0 ? `<td rowspan="${ls.length + (v.nar ? 1 : 0)}">${fd(v.d)}</td><td rowspan="${ls.length + (v.nar ? 1 : 0)}" class="mono small">${esc(v.no)}<div class="small muted">${v.t === 'C' ? 'Contra' : 'Journal'}${v.rev ? ' · bounce reversal' : ''}</div></td>` : ''}<td style="${l.cr ? 'padding-left:26px' : ''}">${l.cr ? 'To ' : ''}${esc(jbAcc(l))}${l.dr ? ' <span class="small muted">Dr</span>' : ''}</td><td class="n">${l.dr ? fmt(l.dr) : ''}</td><td class="n">${l.cr ? fmt(l.cr) : ''}</td></tr>`).join('') + (v.nar ? `<tr><td colspan="3" class="small muted">(${esc(v.nar)})</td></tr>` : ''); }).join('');
+    $('jb-res').innerHTML = `<div class="tw tall"><table><thead><tr><th>Date</th><th>Voucher</th><th>Particulars</th><th class="n">Debit ₹</th><th class="n">Credit ₹</th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="empty">No journal or contra entries</td></tr>'}<tr class="tot"><td colspan="3">${V.length} entries</td><td class="n">${fmt(tdr)}</td><td class="n">${fmt(tcr)}</td></tr></tbody></table></div>`; }
+});
+function jbOut() { const V = jbData(); const rows = [['Date', 'Voucher', 'Type', 'Particulars', 'Debit', 'Credit', 'Narration']];
+  for (const [, v] of V) vLines(v).forEach((l, i) => rows.push([i ? '' : fd(v.d), i ? '' : v.no, i ? '' : (v.t === 'C' ? 'Contra' : 'Journal'), (l.cr ? '   To ' : '') + jbAcc(l), l.dr || '', l.cr || '', i ? '' : v.nar || '']));
+  xlsx('Journal_Book_' + S.fy.label, [{ name: 'Journal Book', title: `Journal book ${fd(rgF())} to ${fd(rgT())}`, rows, cols: [11, 11, 9, 42, 13, 13, 40] }]); }
+
 // ═══════════════════════════════════════════════════════════════════════
 // ADMINISTRATION: year-end & locks · team · audit trail · settings · data tools (backup, restore, MAXX import)
 // ═══════════════════════════════════════════════════════════════════════
@@ -2832,7 +2954,7 @@ async function closeYear(final) {
   const msg = final ? `Close FY ${S.fy.label}? Openings of FY ${fyLabelFor(nStart)} will be ${next ? 'replaced with' : 'set to'} this year's closing balances and this year will be locked.` : `${next ? 'Replace' : 'Create'} provisional opening balances of FY ${fyLabelFor(nStart)} from this year's current closing balances?`;
   if (!await confirmBox(msg, { ok: final ? 'Close year' : 'Carry forward' })) return;
   const c = ENG.closingForNextYear(S);
-  const up = { [`ob/${nid}`]: { heads: c.heads, members: c.members, from: S.fyId, prov: !final, at: Date.now(), by: uname() } };
+  const up = { [`ob/${nid}`]: { heads: c.heads, members: c.members, py: c.py, from: S.fyId, prov: !final, at: Date.now(), by: uname() } };
   if (!next) up[`fys/${nid}`] = { label: fyLabelFor(nStart), start: nStart, end: fyEndFor(nStart), closed: false };
   if (final) { up[`fys/${S.fyId}/closed`] = true; up[`fys/${S.fyId}/lock`] = S.fy.end; up[`fys/${S.fyId}/closedAt`] = Date.now(); up[`fys/${S.fyId}/closedBy`] = uname(); }
   await commit(up, { a: final ? 'close' : 'carry', e: 'year', s: `${final ? 'Closed' : 'Carried forward'} FY ${S.fy.label} → FY ${fyLabelFor(nStart)} (${ENG.r2(c.surplus) >= 0 ? 'surplus' : 'deficit'} ₹${fmt(Math.abs(c.surplus))}, ${Object.keys(c.members).length} member balances)` });
@@ -3024,7 +3146,7 @@ function maxxPlan(no, o) {
   const AH = T('ACCHEADS').filter(x => String(x.SocNo) === no); const MEM = T('MEMBERS').filter(x => String(x.SocNo) === no);
   const I4 = T('INSTA4').filter(x => String(x.SocNo) === no).sort((a, b) => a.SNO - b.SNO); const I5 = T('INSTA5').find(x => String(x.SocNo) === no) || {};
   const close = o.mode === 'close'; const warn = [];
-  const heads = {}, code2id = {}, ob = {}; let ieExtra = 0;
+  const heads = {}, code2id = {}, ob = {}, py = {}; let ieExtra = 0;
   for (const a of AH) {
     const code = String(a.AcCode || ''), g = +code.slice(0, 3); if (g === 261) continue;
     const bal = n(close ? a.ClosingBal : a.OpeningBal);
@@ -3032,7 +3154,7 @@ function maxxPlan(no, o) {
     const map = MX_GRP[g] || (code[0] === '1' ? ['Liabilities', 'Current Liabilities'] : code[0] === '2' ? ['Assets', 'Current Assets'] : code[0] === '3' ? ['Income', 'Other Income'] : ['Expenses', 'Other Expenses']);
     const id = FBX.key('x'); code2id[code] = id;
     heads[id] = { code, grp: map[0], sub: map[1], name: tc(a.AcName) || code, type: g === 211 ? (/cash/i.test(a.AcName) ? 'cash' : 'bank') : 'gen', tag: '', active: true, _g: g, _cl: n(a.ClosingBal) };
-    if (map[0] === 'Income' || map[0] === 'Expenses') { if (close) ieExtra += bal; else if (bal) ob[id] = bal; } else if (bal) ob[id] = bal;
+    if (map[0] === 'Income' || map[0] === 'Expenses') { if (close) { ieExtra += bal; if (bal) py[id] = r2(Math.abs(bal)); } else if (bal) ob[id] = bal; } else if (bal) ob[id] = bal;
   }
   // unique names
   const seen = {}; for (const h of Object.values(heads)) { const k = h.name.toLowerCase(); if (seen[k]) h.name += ' (' + h.code + ')'; seen[k] = 1; }
@@ -3077,7 +3199,7 @@ function maxxPlan(no, o) {
   const sd = I5.SDate ? ymd(new Date(I5.SDate)) : '', ld = I5.LDate ? ymd(new Date(I5.LDate)) : '';
   const yrStart = close && ld ? nextDay(ld) : sd; if (yrStart && yrStart !== S.fy.start) warn.push(`MAXX ${close ? 'next year starts' : 'year starts'} ${fd(yrStart)} but this FY starts ${fd(S.fy.start)}.`);
   const meta = o.meta ? { name: [tc(I5.TOP1), tc(I5.TOP2)].filter(Boolean).join(' ') || soc.name.replace(/\s*\d{4}-\d{2}$/, ''), regNo: tc(I5.TOP3), address: [tc(I5.TOP4), tc(I5.TOP5)].filter(Boolean).join(', ') } : null;
-  return { soc, heads, ob: { heads: ob, members: mob }, members, bcfg, billing: { per, rate: n(I5.IN) || SET().billing.rate, basis: 'bill' }, sign: tc(I5.SIGNA), meta, warn, sumOB, close };
+  return { soc, heads, py, ob: { heads: ob, members: mob }, members, bcfg, billing: { per, rate: n(I5.IN) || SET().billing.rate, basis: 'bill' }, sign: tc(I5.SIGNA), meta, warn, sumOB, close };
 }
 function maxxPreview(p) {
   const hs = Object.values(p.heads); const by = g => hs.filter(h => h.grp === g).length; const bh = hs.filter(h => h.bill).sort((a, b) => a.bill.order - b.bill.order);
@@ -3094,7 +3216,7 @@ function maxxPreview(p) {
 async function maxxCommit() {
   const p = MX.plan; if (!p) return;
   if (Object.keys(S.vch).length || Object.keys(S.bills).length) throw new Error('This society already has entries.');
-  const up = { heads: p.heads, members: p.members, bcfg: p.bcfg, pending: null, [`ob/${S.fyId}`]: { heads: p.ob.heads, members: p.ob.members }, 'meta/settings/billing': { ...SET().billing, ...p.billing } };
+  const up = { heads: p.heads, members: p.members, bcfg: p.bcfg, pending: null, [`ob/${S.fyId}`]: { heads: p.ob.heads, members: p.ob.members, py: p.py || {} }, 'meta/settings/billing': { ...SET().billing, ...p.billing } };
   if (p.sign) up['meta/settings/bill/sign'] = p.sign;
   if (p.meta) { if (p.meta.name) up['meta/name'] = p.meta.name; if (p.meta.regNo) up['meta/regNo'] = p.meta.regNo; if (p.meta.address) up['meta/address'] = p.meta.address; }
   await commit(up, { a: 'import', e: 'MAXX', s: `Imported ${p.soc.name} from MAXX: ${Object.keys(p.heads).length} heads, ${Object.keys(p.members).length} members (${p.close ? 'closing' : 'opening'} balances)` });
