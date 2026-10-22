@@ -1277,7 +1277,7 @@ async function authGo(mode) {
     if (mode === 'forgot') { await FBX.reset(e); return say('Password reset link sent to ' + e, 'a-ok'); }
     if (!p) return say('Please enter your password.');
     msg.innerHTML = loading(mode === 'register' ? 'Creating account…' : 'Signing in…');
-    if (mode === 'register') { const n = val('au-name'); const c = await FBX.register(e, p); if (n) { await FBX.setName(n); } }
+    if (mode === 'register') { const n = val('au-name'); const c = await FBX.register(e, p); if (n) { await FBX.setName(n); } toast('Account created. The firm owner must approve it before you can create societies.', 'ok', 8000); }
     else await FBX.login(e, p);
   } catch (err) { say(String(err.message || err).replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim() || 'Login failed'); }
 }
@@ -1295,6 +1295,7 @@ async function afterLogin(u) {
   try {
     await FBX.update({ [`users/${u.uid}/email`]: u.email, [`users/${u.uid}/name`]: u.displayName || u.email.split('@')[0], [`users/${u.uid}/last`]: Date.now(), [`emailIndex/${emailKey(u.email)}`]: u.uid });
   } catch (e) { console.warn('profile write', e); if (/permission/i.test(e.message || '')) toast('Database rules are not set up yet — see FIREBASE_SETUP.md', 'err', 9000); }
+  await firmInit(u);
   const last = LS.get('sb_last_' + u.uid, '');
   goFirm();
   if (last && new URLSearchParams(location.search).get('s') !== '0') {
@@ -1304,7 +1305,18 @@ async function afterLogin(u) {
 }
 
 // ── Firm level ───────────────────────────────────────────────────────────
-const FIRM = { list: {}, info: {} };
+const FIRM = { list: {}, info: {}, admin: false, ok: false };
+// Firm-level access: the first user becomes firm owner; anyone else who registers must be approved before creating societies.
+async function firmInit(u) {
+  FIRM.admin = false; FIRM.ok = false;
+  try {
+    const admins = await FBX.get('firm/admins');
+    if (!admins) { await FBX.set('firm/admins/' + u.uid, { e: u.email, at: Date.now() }); toast('You are now the firm owner of this SocietyBooks installation', 'ok', 6000); }
+    FIRM.admin = !!(await FBX.get('firm/admins/' + u.uid));
+    FIRM.ok = FIRM.admin || !!(await FBX.get('firm/approved/' + u.uid));
+    if (!FIRM.ok && !(await FBX.get('firm/rejected/' + u.uid))) await FBX.set('firm/pending/' + u.uid, { e: u.email, n: u.displayName || u.email.split('@')[0], at: Date.now() });
+  } catch (e) { console.warn('firm init', e); }
+}
 function goFirm() {
   closeSociety();
   buildSide(); updateTopbar();
@@ -1336,19 +1348,20 @@ page('firm', {
       <div class="small muted" style="margin:3px 0 10px">${esc([r.regNo, r.city].filter(Boolean).join(' · ') || '—')}</div>
       <div class="row small" style="justify-content:space-between"><span>${sm.members || 0} members</span><span class="mono ${sm.out ? 'dr' : ''}">₹${fmt0(sm.out || 0)} due</span></div>
       <div class="row small" style="margin-top:6px;justify-content:space-between"><span class="tag ${cur ? 't-ok' : lb ? 't-warn' : 't-grey'}">${lb ? (cur ? '✓ Billed ' : 'Last bill ') + monLbl(lb) : 'Not billed yet'}</span><span class="muted">${esc(sm.fy || '')}</span></div></div>`; };
-    shell('All Societies', 'Firm dashboard — every society you can access', `<button onclick="newSocietyModal()">+ New Society</button>`,
+    shell('All Societies', 'Firm dashboard — every society you can access', FIRM.ok ? `<button onclick="newSocietyModal()">+ New Society</button>` : '',
       `<div class="grid g4" style="margin-bottom:16px">
         <div class="stat"><div class="v">${ids.length}</div><div class="l">Societies</div></div>
         <div class="stat"><div class="v">${mem}</div><div class="l">Active members</div></div>
         <div class="stat"><div class="v dr">₹${fmt0(tot)}</div><div class="l">Total outstanding dues</div></div>
         <div class="stat"><div class="v">${billed}/${ids.length}</div><div class="l">Billed for ${monLbl(today())}</div></div></div>
       <div class="toolbar"><input placeholder="🔍 Search societies…" value="${esc(q)}" oninput="LS.set('sb_firmq',this.value);$$('.socc').forEach(c=>c.style.display=c.dataset.n.includes(this.value.toLowerCase())?'':'none')" style="min-width:280px"></div>
-      ${ids.length ? `<div class="grid g3">${rows.map(card).join('')}</div>` : `<div class="card empty">No societies yet. Click <b>+ New Society</b> to create your first one, or ask an admin to add you to theirs.</div>`}`);
+      ${ids.length ? `<div class="grid g3">${rows.map(card).join('')}</div>` : FIRM.ok ? `<div class="card empty">No societies yet. Click <b>+ New Society</b> to create your first one.</div>` : `<div class="alert a-warn"><b>Your account is waiting for approval.</b><br>Shreedeep Solutions has been notified. Once approved you can create societies; you can already work in any society an admin adds you to.</div>`}`);
     if (q) $$('.socc').forEach(c => c.style.display = c.dataset.n.includes(q) ? '' : 'none');
   }
 });
 
 function newSocietyModal() {
+  if (!FIRM.ok) return toast('Your account is waiting for approval by the firm owner.', 'warn', 6000);
   const ids = Object.keys(FIRM.list).filter(s => (FIRM.info[s] || {}).role === 'admin' || (FIRM.info[s] || {}).role === 'accountant');
   const st = defaultFYStart();
   openModal({
@@ -1393,7 +1406,15 @@ page('staff', {
     await Promise.all(mine.map(async s => { acc[s] = (await FBX.get(`societies/${s}/meta/access`).catch(() => null)) || {}; }));
     const people = {};
     for (const [s, a] of Object.entries(acc)) for (const [u, x] of Object.entries(a)) { (people[u] = people[u] || { e: x.e, n: x.n, socs: [] }).socs.push({ s, r: x.r }); }
-    shell('Staff & Assignments', 'Give staff logins access to the societies they handle', '', `
+    let reqHtml = '';
+    if (FIRM.admin) {
+      const [pend, appr, adm] = await Promise.all(['firm/pending', 'firm/approved', 'firm/admins'].map(p => FBX.get(p).catch(() => null)));
+      const P = Object.entries(pend || {}), A = Object.entries(appr || {}), D = adm || {};
+      reqHtml = `<div class="card" style="margin-bottom:14px;${P.length ? 'border-color:var(--warn)' : ''}"><h3>🔐 Who can use SocietyBooks</h3><p class="small muted">Anyone can register with the link, but only people you approve here can create societies. Staff you add to a society can work in it either way.</p>
+      ${P.length ? `<h4 style="margin:10px 0 6px">⏳ Waiting for approval (${P.length})</h4><div class="tw"><table>${P.map(([u, x]) => `<tr><td><b>${esc(x.n || '')}</b><div class="small muted">${esc(x.e || '')} · ${x.at ? new Date(x.at).toLocaleString('en-IN') : ''}</div></td><td style="white-space:nowrap"><button class="xs ok" onclick="firmApprove('${u}','${jsq(x.e)}','${jsq(x.n)}')">Approve</button> <button class="xs ghost" onclick="firmReject('${u}')">Reject</button></td></tr>`).join('')}</table></div>` : '<div class="small muted">No pending requests.</div>'}
+      <h4 style="margin:12px 0 6px">Approved</h4><div class="tw"><table>${Object.entries(D).map(([u, x]) => `<tr><td><b>${esc((x && x.e) || (u === S.user.uid ? S.user.email : u))}</b></td><td><span class="tag t-blue">firm owner</span></td><td></td></tr>`).join('')}${A.map(([u, x]) => `<tr><td><b>${esc(x.n || '')}</b><div class="small muted">${esc(x.e || '')}</div></td><td><span class="tag t-ok">approved</span></td><td style="white-space:nowrap">${D[u] ? '' : `<button class="xs ghost" onclick="firmMakeAdmin('${u}','${jsq(x.e)}')">Make owner</button> <button class="xs ghost" onclick="firmRevoke('${u}')">Revoke</button>`}</td></tr>`).join('')}</table></div></div>`;
+    }
+    shell('Staff & Assignments', 'Give staff logins access to the societies they handle', '', reqHtml + `
       <div class="grid g2">
       <div class="card"><h3>➕ Assign staff to societies</h3>
         <div class="alert a-info small">The staff member must create their SocietyBooks login once (Create account on the login screen) before you can add them.</div>
@@ -1413,6 +1434,10 @@ page('staff', {
         </tbody></table></div></div></div>`);
   }
 });
+async function firmApprove(u, e, n) { await FBX.update({ ['firm/approved/' + u]: { e, n, at: Date.now(), by: uname() }, ['firm/pending/' + u]: null, ['firm/rejected/' + u]: null }); toast(e + ' approved'); render(); }
+async function firmReject(u) { if (!await confirmBox('Reject this request? They will not be able to create societies.', { danger: true })) return; await FBX.update({ ['firm/pending/' + u]: null, ['firm/rejected/' + u]: true }); toast('Rejected'); render(); }
+async function firmRevoke(u) { if (!await confirmBox('Revoke approval? They keep access to societies they were added to, but cannot create new ones.', { danger: true })) return; await FBX.update({ ['firm/approved/' + u]: null }); toast('Approval revoked'); render(); }
+async function firmMakeAdmin(u, e) { if (!await confirmBox(`Make ${e} a firm owner? They will be able to approve other users.`)) return; await FBX.set('firm/admins/' + u, { e, at: Date.now() }); toast(e + ' is now a firm owner'); render(); }
 async function assignStaff() {
   const e = val('sa-email'), r = val('sa-role'); const socs = $$('.sa-cb').filter(c => c.checked).map(c => c.value);
   if (!e || !socs.length) return toast('Enter email and pick at least one society', 'warn');
@@ -3096,7 +3121,7 @@ const RULES_JSON = `{
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         "$sid": {
-          ".write": "auth != null && ((auth.uid === $uid && !root.child('societies/'+$sid).exists()) || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin')"
+          ".write": "auth != null && ((auth.uid === $uid && (root.child('firm/approved/'+auth.uid).exists() || root.child('firm/admins/'+auth.uid).exists()) && !root.child('societies/'+$sid).exists()) || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin')"
         }
       }
     },
@@ -3109,7 +3134,7 @@ const RULES_JSON = `{
     "societies": {
       "$sid": {
         ".read": "auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid).exists()",
-        ".write": "auth != null && ((!data.exists() && newData.child('meta/owner').val() === auth.uid && newData.child('meta/access/'+auth.uid+'/r').val() === 'admin') || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin')",
+        ".write": "auth != null && ((!data.exists() && (root.child('firm/approved/'+auth.uid).exists() || root.child('firm/admins/'+auth.uid).exists()) && newData.child('meta/owner').val() === auth.uid && newData.child('meta/access/'+auth.uid+'/r').val() === 'admin') || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin')",
         "heads": {
           ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
         },
@@ -3189,6 +3214,33 @@ const RULES_JSON = `{
               ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && root.child('societies/'+$sid+'/fys/'+$fy+'/closed').val() !== true"
             }
           }
+        }
+      }
+    },
+    "firm": {
+      "admins": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && ((root.child('firm/admins/'+auth.uid).exists()) || ($uid === auth.uid && !root.child('firm/admins').exists()))"
+        }
+      },
+      "approved": {
+        ".read": "root.child('firm/admins/'+auth.uid).exists()",
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "root.child('firm/admins/'+auth.uid).exists()"
+        }
+      },
+      "pending": {
+        ".read": "root.child('firm/admins/'+auth.uid).exists()",
+        "$uid": {
+          ".write": "auth != null && ((root.child('firm/admins/'+auth.uid).exists()) || ($uid === auth.uid && newData.exists()))"
+        }
+      },
+      "rejected": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "root.child('firm/admins/'+auth.uid).exists()"
         }
       }
     }
