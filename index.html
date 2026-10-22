@@ -931,10 +931,12 @@ async function reserveNo(series, count = 1) {
   return r.value - count + 1;
 }
 const fmtNo = (series, n) => `${series}-${String(n).padStart(4, '0')}`;
+const TAB_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
 async function withLock(name, fn) {
-  const p = sp('locks/' + name); const me = { u: S.user.uid, n: uname(), at: Date.now() };
-  const r = await FBX.txn(p, cur => { if (cur && cur.u !== me.u && Date.now() - (cur.at || 0) < 10 * 60 * 1000) return; return me; });
-  if (!r.committed) { const cur = r.value || {}; throw new Error(`${cur.n || 'Another user'} is running this right now (started ${new Date(cur.at || Date.now()).toLocaleTimeString()}). Please wait and try again.`); }
+  const p = sp('locks/' + name); const me = { u: S.user.uid, n: uname(), s: TAB_ID, at: Date.now() };
+  // locked per browser tab, so the same login on two devices / tabs is also kept apart
+  const r = await FBX.txn(p, cur => { if (cur && (cur.s || cur.u) !== me.s && Date.now() - (cur.at || 0) < 10 * 60 * 1000) return; return me; });
+  if (!r.committed) { const cur = r.value || {}; throw new Error(`${cur.u === S.user.uid ? 'You (on another device or tab)' : cur.n || 'Another user'} ${cur.u === S.user.uid ? 'are' : 'is'} running this right now (started ${new Date(cur.at || Date.now()).toLocaleTimeString()}). Please wait and try again.`); }
   try { return await fn(); } finally { try { await FBX.remove(p); } catch (e) { } }
 }
 // Conflict check for edits: someone else changed the record since the form opened
@@ -1141,17 +1143,79 @@ function voucherDocHtml(vid) {
 }
 function printVoucher(vid) { const v = S.vch[vid]; if (!v) return; printDoc(v.no, voucherDocHtml(vid)); }
 
-// ── Excel export (SheetJS) ───────────────────────────────────────────────
+// ── Excel export ─────────────────────────────────────────────────────────
+// Every export is a formatted workbook (title, shaded bordered header, borders, Indian number format, bold totals),
+// written with ExcelJS; if that library can't load (offline) the plain SheetJS file is produced instead.
+// A row may be a plain array, or { r: [...], t: 'head' | 'sec' | 'total' | 'title' } to set its style.
 function xlsx(filename, sheets) {
+  const fn = filename.replace(/[^\w\-. ]+/g, '_');
+  (async () => { if (typeof ExcelJS === 'undefined') { try { await loadScript(EXCELJS_URL); } catch (e) { } } if (typeof ExcelJS === 'undefined') throw new Error('no exceljs'); await xlsxStyled(fn, sheets); })()
+    .catch(e => { if (!/no exceljs/.test(e && e.message)) console.warn('styled excel failed', e); xlsxPlain(fn, sheets); });
+}
+function xlsxPlain(fn, sheets) {
   if (typeof XLSX === 'undefined') return toast('Excel library not loaded (check internet)', 'err');
   const wb = XLSX.utils.book_new();
   for (const s of sheets) {
+    const rows = s.rows.map(r => (Array.isArray(r) ? r : r.r || []));
     const head = [[S.meta.name || ''], [s.title || s.name], []];
-    const ws = XLSX.utils.aoa_to_sheet(s.noHead ? s.rows : [...head, ...s.rows]);
+    const ws = XLSX.utils.aoa_to_sheet(s.noHead ? rows : [...head, ...rows]);
     if (s.cols) ws['!cols'] = s.cols.map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, ws, String(s.name).slice(0, 31).replace(/[\\/?*\[\]:]/g, ' '));
   }
-  XLSX.writeFile(wb, filename.replace(/[^\w\-. ]+/g, '_') + '.xlsx');
+  XLSX.writeFile(wb, fn + '.xlsx');
+}
+const INR_FMT = '[>=10000000]##\\,##\\,##\\,##0.00;[>=100000]##\\,##\\,##0.00;##,##0.00';
+const XL_TOTAL = /^(total|grand total|closing|total \/|net total|sub-?total)\b|^TOTAL$|\btotal\b.*\(\d+ (members|entries|receipts|payments)\)$/i;
+const XL_CNT = /^(#|sr\.?|sr\. ?no\.?|no\.|bills|count|days|members|rate %?|page)$/i;
+const XL_DRCR = /^-?[\d,]+\.\d\d(\s?(Dr|Cr))?$/;
+async function xlsxStyled(fn, sheets) {
+  const wb = new ExcelJS.Workbook(); wb.creator = APP_NAME; const used = new Set();
+  const thin = { style: 'thin', color: { argb: 'FFB8BEC8' } }, med = { style: 'medium', color: { argb: 'FF333333' } }, dbl = { style: 'double', color: { argb: 'FF333333' } };
+  const HEAD_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDFE4EC' } }, SEC_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F3F6' } }, TOT_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6F7F9' } };
+  for (const s of sheets) {
+    let nm = String(s.name || 'Sheet').slice(0, 31).replace(/[\\/?*\[\]:]/g, ' '); while (used.has(nm.toLowerCase())) nm = nm.slice(0, 28) + '_' + used.size; used.add(nm.toLowerCase());
+    const R = s.rows.map(r => (Array.isArray(r) ? { r } : { r: r.r || [], t: r.t }));
+    const nc = Math.max(1, s.cols ? s.cols.length : 0, ...R.map(x => x.r.length));
+    // first plain row of string cells is the header (unless rows carry their own types)
+    const typed = R.some(x => x.t); if (!typed && R.length && R[0].r.length > 1 && R[0].r.every(c => c === '' || c == null || typeof c === 'string')) R[0].t = 'head';
+    const headIdx = R.findIndex(x => x.t === 'head'); const header = headIdx >= 0 ? R[headIdx].r.map(c => String(c || '')) : [];
+    // gap columns (blank header and blank everywhere) stay without borders — used by T-format sheets
+    const gap = Array.from({ length: nc }, (_, i) => header.length > 1 && !header[i] && R.every(x => x.r[i] === '' || x.r[i] == null));
+    const ws = wb.addWorksheet(nm, { pageSetup: { paperSize: 9, orientation: nc > 8 ? 'landscape' : 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } }, headerFooter: { oddFooter: '&L' + APP_NAME + '&RPage &P of &N' } });
+    const widths = s.cols ? s.cols.slice() : Array.from({ length: nc }, (_, i) => Math.min(48, Math.max(8, ...R.slice(0, 300).map(x => String(x.r[i] == null ? '' : typeof x.r[i] === 'number' ? fmt(x.r[i]) : x.r[i]).length + 2))));
+    ws.columns = widths.map(w => ({ width: w }));
+    let top = 0;
+    if (!s.noHead) {
+      const heads = [[S.meta.name || '', { size: 14, bold: true }], [[S.meta.regNo && 'Reg. No. ' + S.meta.regNo, [S.meta.address, S.meta.city].filter(Boolean).join(', ')].filter(Boolean).join(' · '), { size: 9, color: { argb: 'FF555555' } }], [s.title || s.name, { size: 12, bold: true }]].filter(x => x[0]);
+      for (const [txt, font] of heads) { const r = ws.addRow([txt]); if (nc > 1) ws.mergeCells(r.number, 1, r.number, nc); r.getCell(1).font = font; r.getCell(1).alignment = { horizontal: 'center' }; }
+      ws.addRow([]); top = ws.rowCount;
+    }
+    let curHead = header;
+    for (const [xi, x] of R.entries()) {
+      const vals = x.r.map(c => (c === '' ? null : c)); const r = ws.addRow(vals);
+      if (!x.r.length || x.r.every(c => c === '' || c == null)) continue; // spacer row
+      const filled = x.r.filter(c => c !== '' && c != null);
+      let t = x.t; if (!t && filled.length === 1 && typeof filled[0] === 'string' && x.r.findIndex(c => c !== '' && c != null) === 0 && nc > 2) t = 'sec';
+      if (!t && x.r.some(c => typeof c === 'string' && XL_TOTAL.test(c.trim()))) t = 'total';
+      if (t === 'head') curHead = x.r.map(c => String(c || ''));
+      if (t === 'sec') { const nh = R.slice(xi + 1).find(y => y.t === 'head' || (y.r.length > 1)); const w = Math.max(1, Math.min(nc, nh ? nh.r.length : nc)); if (w > 1) ws.mergeCells(r.number, 1, r.number, w); const c = r.getCell(1); c.font = { bold: true, size: 11 }; c.fill = SEC_FILL; c.border = { top: thin, bottom: thin, left: thin, right: thin }; continue; }
+      if (t === 'title') { if (nc > 1) ws.mergeCells(r.number, 1, r.number, nc); r.getCell(1).font = { bold: true, size: 12 }; r.getCell(1).alignment = { horizontal: 'center' }; continue; }
+      for (let i = 0; i < nc; i++) {
+        if (i >= x.r.length) continue; const v = x.r[i]; const blank = v === '' || v == null; if (gap[i] || (blank && (t === 'head' ? i > 0 && i < nc - 1 && x.r[i - 1] && x.r[i + 1] : curHead.length > 1 && !curHead[i] && i > 0 && curHead[i - 1] && curHead[i + 1]))) continue; const c = r.getCell(i + 1); const isNum = typeof v === 'number';
+        const cnt = XL_CNT.test(String(curHead[i] || '').trim());
+        if (t === 'head') { c.font = { bold: true, size: 10 }; c.fill = HEAD_FILL; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.border = { top: thin, bottom: med, left: thin, right: thin }; continue; }
+        if (isNum) { c.numFmt = cnt && Number.isInteger(v) ? '0' : v < 0 ? '#,##0.00' : INR_FMT; c.alignment = { horizontal: cnt ? 'center' : 'right', vertical: 'top' }; }
+        else c.alignment = { horizontal: typeof v === 'string' && XL_DRCR.test(v) ? 'right' : 'left', vertical: 'top', wrapText: typeof v === 'string' && v.length > 45, indent: typeof v === 'string' && /^\s{2,}/.test(v) ? 2 : 0 };
+        if (typeof v === 'string' && /^\s{2,}/.test(v)) c.value = v.trim();
+        c.font = { size: 10, bold: t === 'total' };
+        c.border = t === 'total' ? { top: med, bottom: dbl, left: thin, right: thin } : { top: thin, bottom: thin, left: thin, right: thin };
+        if (t === 'total') c.fill = TOT_FILL;
+      }
+    }
+    if (headIdx >= 0 && !typed) ws.views = [{ state: 'frozen', ySplit: top + headIdx + 1 }];
+  }
+  const buf = await wb.xlsx.writeBuffer();
+  download(fn + '.xlsx', new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
 }
 // T-format: left & right lists of [label, amount|null, bold?]
 function xlsxT(filename, title, leftTitle, rightTitle, left, right, pv) {
@@ -3306,8 +3370,6 @@ function bsSchedules(bs) {
 
 // ── Formatted Excel (ExcelJS) ────────────────────────────────────────────
 // sheet = { name, title, sub, cols:[widths], landscape, rows:[[cell…]] } ; cell = value | { v, b, ind, num, top, dbl, fill, it, al }
-// Indian grouping (1,20,865.00) in Excel
-const INR_FMT = '[>=10000000]##\\,##\\,##\\,##0.00;[>=100000]##\\,##\\,##0.00;##,##0.00';
 async function xlsxPretty(filename, sheets) {
   if (typeof ExcelJS === 'undefined') { try { await loadScript(EXCELJS_URL); } catch (e) { } }
   if (typeof ExcelJS === 'undefined') return false;
@@ -3322,7 +3384,7 @@ async function xlsxPretty(filename, sheets) {
     for (const row of sh.rows) {
       const r = ws.addRow(row.map(c => (c && typeof c === 'object' ? (c.v == null ? null : c.v) : c == null ? null : c)));
       row.forEach((c, i) => { const cell = r.getCell(i + 1); const o = c && typeof c === 'object' ? c : { v: c };
-        const isNum = typeof o.v === 'number'; if (isNum) cell.numFmt = o.al === 'center' && Number.isInteger(o.v) ? '0' : o.v < 0 ? '-#,##0.00' : INR_FMT;
+        const isNum = typeof o.v === 'number'; if (isNum) cell.numFmt = o.al === 'center' && Number.isInteger(o.v) ? '0' : o.v < 0 ? '#,##0.00' : INR_FMT;
         cell.font = { bold: !!o.b, italic: !!o.it, size: 10, color: o.color ? { argb: o.color } : undefined };
         cell.alignment = { horizontal: o.al || (isNum ? 'right' : 'left'), vertical: 'middle', indent: o.ind || 0, wrapText: !isNum && !!o.wrap };
         if (o.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: o.fill } };
@@ -4489,18 +4551,25 @@ async function booksMake(pdf, xls) {
 function booksXlsx(base, secs, f, t) {
   const idx = [['#', 'Book', 'Sheet']]; const sheets = [];
   const used = new Set(['index']);
-  secs.forEach((s, i) => { const name = sheetName(s.title.replace(/[()’']/g, '').replace(' – ', ' ').slice(0, 28), used); idx.push([i + 1, s.title + (s.sub ? ' — ' + s.sub : ''), name]);
-    const rows = [];
-    for (const it of s.items) {
-      if (it.name) { rows.push([it.name + (it.sub ? '   (' + it.sub + ')' : '')]); }
+  const toRows = items => { const rows = [];
+    for (const it of items) {
+      if (it.name) { rows.push({ r: [it.name + (it.sub ? '   (' + it.sub + ')' : '')], t: 'sec' }); }
       if (it.t) { const n = Math.max(it.L.length, it.R.length); const pad = (a) => { a = a.slice(); const last = a.pop(); while (a.length < n - 1) a.push(['', null, null]); a.push(last); return a; }; const L = pad(it.L), R = pad(it.R); const v = x => (x == null ? '' : r2(x));
-        rows.push(it.on ? ['Previous Year', it.lt, 'Current Year', '', 'Previous Year', it.rt, 'Current Year'] : [it.lt, 'Amount', '', it.rt, 'Amount']);
+        rows.push({ r: it.on ? ['Previous Year', it.lt, 'Current Year', '', 'Previous Year', it.rt, 'Current Year'] : [it.lt, 'Amount', '', it.rt, 'Amount'], t: 'head' });
         for (let k = 0; k < n; k++) rows.push(it.on ? [v(L[k][2]), L[k][0], v(L[k][1]), '', v(R[k][2]), R[k][0], v(R[k][1])] : [L[k][0], v(L[k][1]), '', R[k][0], v(R[k][1])]); }
-      else { rows.push(it.head); it.rows.forEach(r => rows.push(r)); (it.foot || []).forEach(r => rows.push(r)); }
+      else { rows.push({ r: it.head, t: 'head' }); it.rows.forEach(r => rows.push(r)); (it.foot || []).forEach(r => rows.push({ r, t: 'total' })); }
       rows.push([]);
-    }
-    sheets.push({ name, title: s.title + (s.sub ? ' — ' + s.sub : ` — ${fd(f)} to ${fd(t)}`), rows, cols: [12, 12, 40, 14, 14, 14, 14, 14, 14, 14] }); });
-  xlsx(base, [{ name: 'Index', title: `Books of Accounts — ${fd(f)} to ${fd(t)}`, rows: idx, cols: [5, 60, 30] }, ...sheets]);
+    } return rows; };
+  const COLS = [12, 17, 44, 15, 15, 16, 14, 14, 14, 14];
+  secs.forEach((s, i) => { const name = sheetName(s.title.replace(/[()’']/g, '').replace(' – ', ' ').slice(0, 28), used); idx.push([i + 1, s.title + (s.sub ? ' — ' + s.sub : ''), name]);
+    const title = s.title + (s.sub ? ' — ' + s.sub : ` — ${fd(f)} to ${fd(t)}`);
+    const tIt = s.items.filter(x => x.t), other = s.items.filter(x => !x.t);
+    if (tIt.length) { // statements in T-format get their own sheet; schedules (e.g. members' dues) go on the next sheet
+      sheets.push({ name, title, rows: toRows(tIt), cols: tIt[0].on ? [15, 42, 15, 2, 15, 42, 15] : [46, 16, 2, 46, 16] });
+      if (other.length) { const n2 = sheetName((s.k === 'bs' ? 'BS Schedules' : s.title.slice(0, 20) + ' Schedules'), used); idx.push(['', '   Schedules to the ' + s.title, n2]); sheets.push({ name: n2, title: 'Schedules to the ' + title, rows: toRows(other.map(x => ({ ...x, name: x.name && x.name.replace(/^Schedule – /, 'Schedule – ') }))), cols: [12, 40, 16, 16, 16, 14] }); }
+    } else sheets.push({ name, title, rows: toRows(s.items), cols: COLS });
+  });
+  xlsx(base, [{ name: 'Index', title: `Books of Accounts — ${fd(f)} to ${fd(t)}`, rows: idx, cols: [5, 70, 30] }, ...sheets]);
 }
 
 async function booksPdf(base, secs, f, t, fullIndex) {
