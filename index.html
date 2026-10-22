@@ -11,9 +11,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getDatabase, ref, get, set, update, remove, push, onValue, runTransaction, serverTimestamp, onDisconnect, query, orderByKey, limitToLast } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-  window.FBSDK = { initializeApp, getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile, getDatabase, ref, get, set, update, remove, push, onValue, runTransaction, serverTimestamp, onDisconnect, query, orderByKey, limitToLast };
+  window.FBSDK = { initializeApp, getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile, getDatabase, ref, get, set, update, remove, push, onValue, runTransaction, serverTimestamp, onDisconnect, query, orderByKey, limitToLast };
   window.dispatchEvent(new Event('fbsdk'));
 </script>
 <style>
@@ -690,7 +690,10 @@ const FBX = {
     const F = window.FBSDK; this.F = F;
     this.app = F.initializeApp({ ...FIREBASE_CONFIG, databaseURL: dbUrl() });
     this.auth = F.getAuth(this.app); this.db = F.getDatabase(this.app);
+    this.persist(LS.get('sb_remember', '0') === '1'); // not remembered → login lasts only while this tab is open
   },
+  // Keep me logged in (this computer) vs. log out when the tab / browser is closed
+  persist(remember) { try { if (!this.F || !this.F.setPersistence) return Promise.resolve(); return this.F.setPersistence(this.auth, remember ? this.F.browserLocalPersistence : this.F.browserSessionPersistence).catch(() => { }); } catch (e) { return Promise.resolve(); } },
   r(p) { return this.F.ref(this.db, p); },
   async get(p) { const s = await this.F.get(this.r(p)); return s.exists() ? s.val() : null; },
   set(p, v) { return this.F.set(this.r(p), v); },
@@ -704,7 +707,7 @@ const FBX = {
   connected(cb) { return this.listen('.info/connected', v => cb(!!v)); },
   async lastN(p, n) { const s = await this.F.get(this.F.query(this.r(p), this.F.orderByKey(), this.F.limitToLast(n))); return s.val() || {}; },
   onAuth(cb) { return this.F.onAuthStateChanged(this.auth, cb); },
-  login(e, p) { return this.F.signInWithEmailAndPassword(this.auth, e, p); },
+  async login(e, p, remember) { await this.persist(!!remember); return this.F.signInWithEmailAndPassword(this.auth, e, p); },
   register(e, p) { return this.F.createUserWithEmailAndPassword(this.auth, e, p); },
   reset(e) { return this.F.sendPasswordResetEmail(this.auth, e); },
   logout() { return this.F.signOut(this.auth); },
@@ -1308,6 +1311,7 @@ function showAuth(mode = 'login') {
     ${reg ? `<div class="fr"><div><label>Your name</label><input id="au-name" placeholder="e.g. Shreedeep"></div></div>` : ''}
     <div class="fr"><div><label>Email</label><input id="au-email" type="email" autocomplete="username" placeholder="you@example.com"></div></div>
     ${fgt ? '' : `<div class="fr"><div><label>Password ${reg ? '(min 6 characters)' : ''}</label><input id="au-pass" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" onkeydown="if(event.key==='Enter')authGo('${mode}')"></div></div>`}
+    ${mode === 'login' ? `<label class="row small" style="margin:0 0 12px;font-weight:500"><input type="checkbox" id="au-rem" ${LS.get('sb_remember', '0') === '1' ? 'checked' : ''}> Keep me logged in on this computer</label>` : ''}
     <div id="au-msg"></div>
     <button style="width:100%;padding:10px" onclick="authGo('${mode}')">${reg ? 'Create account' : fgt ? 'Send reset link' : 'Login'}</button></div>
     <div class="row" style="justify-content:space-between;margin-top:14px">
@@ -1326,7 +1330,7 @@ async function authGo(mode) {
     if (!p) return say('Please enter your password.');
     msg.innerHTML = loading(mode === 'register' ? 'Creating account…' : 'Signing in…');
     if (mode === 'register') { const n = val('au-name'); const c = await FBX.register(e, p); if (n) { await FBX.setName(n); } toast('Account created. The firm owner must approve it before you can create societies.', 'ok', 8000); }
-    else await FBX.login(e, p);
+    else { const rem = !!($('au-rem') && $('au-rem').checked); LS.set('sb_remember', rem ? '1' : '0'); await FBX.login(e, p, rem); }
   } catch (err) { say(String(err.message || err).replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim() || 'Login failed'); }
 }
 function connSettings() {
@@ -1336,6 +1340,10 @@ function connSettings() {
     onOk: () => { LS.set('sb_dburl', val('cs-url')); toast('Saved. Reloading…'); setTimeout(() => location.reload(), 600); }
   });
 }
+// Auto-logout after 30 minutes without any activity (unless "Keep me logged in" was ticked)
+const IDLE = { last: Date.now(), mins: 30 };
+['mousemove', 'keydown', 'click', 'touchstart', 'scroll'].forEach(ev => document.addEventListener(ev, () => { IDLE.last = Date.now(); }, { passive: true, capture: true }));
+setInterval(() => { if (S.user && LS.get('sb_remember', '0') !== '1' && Date.now() - IDLE.last > IDLE.mins * 60000) { IDLE.last = Date.now(); logout().then(() => setTimeout(() => toast(`Logged out after ${IDLE.mins} minutes of no activity`, 'warn', 10000), 300)); } }, 60000);
 async function logout() { try { if (S.sid && S.user) await FBX.remove(sp('presence/' + S.user.uid)); } catch (e) { } await FBX.logout(); }
 
 async function afterLogin(u) {
