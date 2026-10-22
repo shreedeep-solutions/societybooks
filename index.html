@@ -880,6 +880,11 @@ function toggleTheme() { LS.set('sb_dark', LS.get('sb_dark', '0') === '1' ? '0' 
 // ── Permissions / guards ─────────────────────────────────────────────────
 const canEdit = () => S.role === 'admin' || S.role === 'accountant';
 const isAdmin = () => S.role === 'admin';
+// Team managers: admins, or accountants / viewers an admin has allowed to add & remove staff
+const myAcc = () => (((S.meta || {}).access || {})[(S.user || {}).uid] || {});
+const canTeam = () => isAdmin() || myAcc().tm === true;
+// A team manager who is not admin may only handle plain accountants / viewers (not admins, not other team managers, not themselves)
+const canManage = (uid, a) => isAdmin() ? uid !== S.meta.owner : (canTeam() && uid !== S.user.uid && a && a.r !== 'admin' && a.tm !== true);
 function guardEdit() { if (!canEdit()) throw new Error('You have view-only access to this society.'); }
 function guardDate(d, what = 'entry') {
   if (!S.fy) throw new Error('No financial year selected.');
@@ -1372,7 +1377,7 @@ async function loadFirmInfo() {
   await Promise.all(ids.map(async sid => {
     try {
       const [name, regNo, city, summary, access] = await Promise.all(['meta/name', 'meta/regNo', 'meta/city', 'summary', `meta/access/${S.user.uid}`].map(p => FBX.get(`societies/${sid}/${p}`)));
-      FIRM.info[sid] = { name, regNo, city, summary: summary || {}, role: (access || {}).r || FIRM.list[sid] };
+      FIRM.info[sid] = { name, regNo, city, summary: summary || {}, role: (access || {}).r || FIRM.list[sid], tm: !!(access || {}).tm };
     } catch (e) { FIRM.info[sid] = { name: '(no access)', err: true }; }
   }));
   if (CUR.id === 'firm' && !S.sid) render();
@@ -1440,13 +1445,16 @@ async function createSociety() {
   toast('Society created'); setTimeout(() => openSociety(sid), 300);
 }
 
-// Staff & assignments (admin of societies assigns staff in bulk)
+// Staff & assignments (admins — or staff an admin allowed — assign staff in bulk)
+let STAFF_ACC = {};
+const staffSocs = () => Object.keys(FIRM.list).filter(s => { const i = FIRM.info[s] || {}; return i.role === 'admin' || i.tm; });
+const staffCan = (s, uid) => { const i = FIRM.info[s] || {}; const a = (STAFF_ACC[s] || {})[uid]; if (uid === S.user.uid) return false; if (i.role === 'admin') return true; return !!(i.tm && (!a || (a.r !== 'admin' && !a.tm))); };
 page('staff', {
   async render() {
-    const mine = Object.keys(FIRM.list).filter(s => (FIRM.info[s] || {}).role === 'admin');
+    const mine = staffSocs();
     shell('Staff & Assignments', 'Give staff logins access to the societies they handle', '', loading());
     const acc = {};
-    await Promise.all(mine.map(async s => { acc[s] = (await FBX.get(`societies/${s}/meta/access`).catch(() => null)) || {}; }));
+    await Promise.all(mine.map(async s => { acc[s] = (await FBX.get(`societies/${s}/meta/access`).catch(() => null)) || {}; })); STAFF_ACC = acc;
     const people = {};
     for (const [s, a] of Object.entries(acc)) for (const [u, x] of Object.entries(a)) { (people[u] = people[u] || { e: x.e, n: x.n, socs: [] }).socs.push({ s, r: x.r }); }
     let reqHtml = '';
@@ -1461,19 +1469,19 @@ page('staff', {
       <div class="grid g2">
       <div class="card"><h3>➕ Assign staff to societies</h3>
         <div class="alert a-info small">The staff member must create their login once (Create account on the login screen) before you can add them.</div>
-        <div data-form><div class="fr c2"><div><label>Staff email</label><input id="sa-email" type="email"></div><div><label>Role</label><select id="sa-role"><option value="accountant">Accountant – can enter & edit</option><option value="viewer">Viewer – read only</option><option value="admin">Admin – full control incl. team</option></select></div></div>
-        <label>Societies (${mine.length} where you are admin)</label>
+        <div data-form><div class="fr c2"><div><label>Staff email</label><input id="sa-email" type="email"></div><div><label>Role</label><select id="sa-role"><option value="accountant">Accountant – can enter & edit</option><option value="viewer">Viewer – read only</option>${mine.some(s => FIRM.info[s].role === 'admin') ? '<option value="admin">Admin – full control incl. team</option>' : ''}</select></div></div>
+        <label>Societies (${mine.length} where you can manage staff)</label>
         <input placeholder="Filter…" oninput="$$('.sa-it').forEach(x=>x.style.display=x.dataset.n.includes(this.value.toLowerCase())?'':'none')" style="margin-bottom:6px">
         <div style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:6px">
           <label class="row small" style="font-weight:700;padding:4px"><input type="checkbox" onchange="$$('.sa-cb').forEach(c=>{if(c.closest('.sa-it').style.display!=='none')c.checked=this.checked})"> Select all shown</label>
-          ${mine.map(s => `<label class="row sa-it small" data-n="${esc(String((FIRM.info[s] || {}).name || '').toLowerCase())}" style="padding:4px;font-weight:500"><input type="checkbox" class="sa-cb" value="${s}"> ${esc((FIRM.info[s] || {}).name || s)}</label>`).join('') || '<div class="muted small">You are not admin of any society yet.</div>'}
+          ${mine.map(s => `<label class="row sa-it small" data-n="${esc(String((FIRM.info[s] || {}).name || '').toLowerCase())}" style="padding:4px;font-weight:500"><input type="checkbox" class="sa-cb" value="${s}"> ${esc((FIRM.info[s] || {}).name || s)}</label>`).join('') || '<div class="muted small">You are not admin of any society yet, and no admin has allowed you to manage staff.</div>'}
         </div>
         <button style="margin-top:12px" onclick="assignStaff()">Assign</button></div></div>
       <div class="card"><h3>👥 People with access</h3>
         <div class="tw tall"><table><thead><tr><th>Person</th><th>Societies</th><th></th></tr></thead><tbody>
         ${Object.entries(people).sort((a, b) => String(a[1].n).localeCompare(String(b[1].n))).map(([u, p]) => `<tr><td><b>${esc(p.n || '')}</b><div class="small muted">${esc(p.e || '')}</div></td>
           <td class="small">${p.socs.map(x => `<span class="tag ${x.r === 'admin' ? 't-blue' : x.r === 'viewer' ? 't-grey' : 't-purple'}" style="margin:1px">${esc((FIRM.info[x.s] || {}).name || x.s)} · ${x.r}</span>`).join(' ')}</td>
-          <td>${u !== S.user.uid ? `<button class="xs ghost" onclick="removeStaffAll('${u}')">Remove from all</button>` : '<span class="small muted">you</span>'}</td></tr>`).join('')}
+          <td>${u === S.user.uid ? '<span class="small muted">you</span>' : p.socs.some(x => staffCan(x.s, u)) ? `<button class="xs ghost" onclick="removeStaffAll('${u}')">Remove from all</button>` : ''}</td></tr>`).join('')}
         </tbody></table></div></div></div>`);
   }
 });
@@ -1484,17 +1492,19 @@ async function firmMakeAdmin(u, e) { if (!await confirmBox(`Make ${e} a firm own
 async function assignStaff() {
   const e = val('sa-email'), r = val('sa-role'); const socs = $$('.sa-cb').filter(c => c.checked).map(c => c.value);
   if (!e || !socs.length) return toast('Enter email and pick at least one society', 'warn');
+  if (r === 'admin' && socs.some(s => FIRM.info[s].role !== 'admin')) return toast('You can make someone admin only in societies where you are admin', 'err', 6000);
   const uid = await FBX.get('emailIndex/' + emailKey(e));
   if (!uid) return toast('No login found for ' + e + '. Ask them to create an account first.', 'err', 7000);
+  const blocked = socs.filter(s => (STAFF_ACC[s] || {})[uid] && !staffCan(s, uid)); if (blocked.length) return toast(`${e} is admin / staff manager in ${blocked.length} of these societies — only an admin there can change that`, 'warn', 7000);
   const prof = (await FBX.get('users/' + uid).catch(() => null)) || {};
   const up = {};
   for (const s of socs) { up[`societies/${s}/meta/access/${uid}`] = { r, e, n: prof.name || e.split('@')[0] }; up[`userSocieties/${uid}/${s}`] = r; up[`societies/${s}/audit/${FBX.key('a')}`] = { at: FBX.ts(), u: S.user.uid, n: uname(), a: 'access', e: 'team', s: `${e} added as ${r}` }; }
   await FBX.update(up); toast(`${e} assigned to ${socs.length} societ${socs.length > 1 ? 'ies' : 'y'}`); render();
 }
 async function removeStaffAll(uid) {
-  if (!await confirmBox('Remove this person from all societies where you are admin?', { danger: true })) return;
-  const mine = Object.keys(FIRM.list).filter(s => (FIRM.info[s] || {}).role === 'admin'); const up = {};
-  for (const s of mine) { up[`societies/${s}/meta/access/${uid}`] = null; up[`userSocieties/${uid}/${s}`] = null; }
+  if (!await confirmBox('Remove this person from all societies where you manage staff?', { danger: true })) return;
+  const mine = staffSocs().filter(s => (STAFF_ACC[s] || {})[uid] && staffCan(s, uid)); const up = {};
+  for (const s of mine) { up[`societies/${s}/meta/access/${uid}`] = null; up[`userSocieties/${uid}/${s}`] = null; up[`societies/${s}/audit/${FBX.key('a')}`] = { at: FBX.ts(), u: S.user.uid, n: uname(), a: 'access', e: 'team', s: `${((STAFF_ACC[s] || {})[uid] || {}).e || uid} removed` }; }
   await FBX.update(up); toast('Access removed'); render();
 }
 page('account', {
@@ -3165,24 +3175,29 @@ page('team', {
   render() {
     const acc = S.meta.access || {}; const admins = Object.values(acc).filter(a => a.r === 'admin').length;
     shell('🔐 Team & Access', 'Who can open this society and what they can do', '', `<div class="grid g2">
-    <div class="card"><h3>People</h3><div class="tw"><table><thead><tr><th>Person</th><th>Role</th><th></th></tr></thead><tbody>
-    ${Object.entries(acc).map(([u, a]) => `<tr><td><b>${esc(a.n || '')}</b>${u === S.meta.owner ? ' <span class="tag t-blue">owner</span>' : ''}<div class="small muted">${esc(a.e || '')}</div></td>
-      <td>${isAdmin() && u !== S.meta.owner ? `<select onchange="setRole('${u}',this.value)">${['admin', 'accountant', 'viewer'].map(r => `<option ${a.r === r ? 'selected' : ''}>${r}</option>`).join('')}</select>` : `<span class="tag ${a.r === 'admin' ? 't-blue' : a.r === 'viewer' ? 't-grey' : 't-purple'}">${a.r}</span>`}</td>
-      <td>${isAdmin() && u !== S.meta.owner && !(a.r === 'admin' && admins < 2) ? `<button class="xs ghost" onclick="removeAccess('${u}')">Remove</button>` : ''}</td></tr>`).join('')}</tbody></table></div></div>
-    <div class="card"><h3>➕ Add a person</h3>${isAdmin() ? `<div data-form><div class="fr"><div><label>Email (they must have created a login)</label><input id="tm-e" type="email"></div></div>
-      <div class="fr"><div><label>Role</label><select id="tm-r"><option value="accountant">Accountant – enter & edit entries, bills</option><option value="viewer">Viewer – reports only (e.g. committee member, auditor)</option><option value="admin">Admin – everything incl. team, locks, year-end</option></select></div></div><button onclick="addAccess()">Add</button></div>` : '<div class="muted small">Only admins can add people.</div>'}
+    <div class="card"><h3>People</h3><div class="tw"><table><thead><tr><th>Person</th><th>Role</th><th>Can add / remove staff</th><th></th></tr></thead><tbody>
+    ${Object.entries(acc).map(([u, a]) => `<tr><td><b>${esc(a.n || '')}</b>${u === S.meta.owner ? ' <span class="tag t-blue">owner</span>' : ''}${u === S.user.uid ? ' <span class="small muted">(you)</span>' : ''}<div class="small muted">${esc(a.e || '')}</div></td>
+      <td>${canManage(u, a) ? `<select onchange="setRole('${u}',this.value)">${(isAdmin() ? ['admin', 'accountant', 'viewer'] : ['accountant', 'viewer']).map(r => `<option ${a.r === r ? 'selected' : ''}>${r}</option>`).join('')}</select>` : `<span class="tag ${a.r === 'admin' ? 't-blue' : a.r === 'viewer' ? 't-grey' : 't-purple'}">${a.r}</span>`}</td>
+      <td>${a.r === 'admin' ? '<span class="small muted">yes (admin)</span>' : isAdmin() ? `<label class="row small" style="margin:0"><input type="checkbox" ${a.tm ? 'checked' : ''} onchange="setTeamMgr('${u}',this.checked)"> allowed</label>` : (a.tm ? '<span class="tag t-ok">allowed</span>' : '<span class="small muted">no</span>')}</td>
+      <td>${canManage(u, a) && !(a.r === 'admin' && admins < 2) ? `<button class="xs ghost" onclick="removeAccess('${u}')">Remove</button>` : ''}</td></tr>`).join('')}</tbody></table></div>
+      ${isAdmin() ? '<div class="small muted" style="margin-top:8px">Tick <b>Can add / remove staff</b> to let an accountant or viewer add people and remove accountants / viewers. They cannot make anyone admin, remove an admin, or change their own access.</div>' : canTeam() ? '<div class="small muted" style="margin-top:8px">You can add accountants / viewers and remove them. Only an admin can make someone admin.</div>' : ''}</div>
+    <div class="card"><h3>➕ Add a person</h3>${canTeam() ? `<div data-form><div class="fr"><div><label>Email (they must have created a login)</label><input id="tm-e" type="email"></div></div>
+      <div class="fr"><div><label>Role</label><select id="tm-r"><option value="accountant">Accountant – enter & edit entries, bills</option><option value="viewer">Viewer – reports only (e.g. committee member, auditor)</option>${isAdmin() ? '<option value="admin">Admin – everything incl. team, locks, year-end</option>' : ''}</select></div></div><button onclick="addAccess()">Add</button></div>` : '<div class="muted small">Only admins, or staff an admin has allowed, can add people.</div>'}
       <div class="alert a-info small" style="margin-top:14px"><b>Two people working at once?</b> That's fine — every PC sees changes live within a second, voucher and bill numbers never clash, only one person can generate bills at a time, and if two people edit the same entry the second one is warned before overwriting. Everything is recorded in the Audit Trail.</div></div></div>`);
   }
 });
 async function addAccess() {
   const e = val('tm-e').toLowerCase(), r = val('tm-r'); if (!e) return;
+  if (!canTeam() || (r === 'admin' && !isAdmin())) return toast('Only an admin can do that', 'err');
   const uid = await FBX.get('emailIndex/' + emailKey(e)); if (!uid) return toast('No login found for ' + e, 'err', 6000);
+  const ex = (S.meta.access || {})[uid]; if (ex && !canManage(uid, ex)) return toast(`${e} already has ${ex.r} access — only an admin can change it`, 'warn', 6000);
   const prof = (await FBX.get('users/' + uid).catch(() => null)) || {};
   await FBX.update({ [sp('meta/access/' + uid)]: { r, e, n: prof.name || e.split('@')[0] }, [`userSocieties/${uid}/${S.sid}`]: r, [sp('audit/' + FBX.key('a'))]: { at: FBX.ts(), u: S.user.uid, n: uname(), a: 'access', e: 'team', s: `${e} added as ${r}` } });
   toast(e + ' added');
 }
-async function setRole(uid, r) { const a = (S.meta.access || {})[uid] || {}; await FBX.update({ [sp(`meta/access/${uid}/r`)]: r, [`userSocieties/${uid}/${S.sid}`]: r, [sp('audit/' + FBX.key('a'))]: { at: FBX.ts(), u: S.user.uid, n: uname(), a: 'access', e: 'team', s: `${a.e} role → ${r}` } }); toast('Role updated'); }
-async function removeAccess(uid) { const a = (S.meta.access || {})[uid] || {}; if (!await confirmBox(`Remove ${esc(a.e)} from this society?`, { danger: true })) return; await FBX.update({ [sp('meta/access/' + uid)]: null, [`userSocieties/${uid}/${S.sid}`]: null, [sp('audit/' + FBX.key('a'))]: { at: FBX.ts(), u: S.user.uid, n: uname(), a: 'access', e: 'team', s: `${a.e} removed` } }); toast('Removed'); }
+async function setRole(uid, r) { const a = (S.meta.access || {})[uid] || {}; if (!canManage(uid, a) || (r === 'admin' && !isAdmin())) return toast('Only an admin can do that', 'err'); await FBX.update({ [sp(`meta/access/${uid}/r`)]: r, [`userSocieties/${uid}/${S.sid}`]: r, [sp('audit/' + FBX.key('a'))]: { at: FBX.ts(), u: S.user.uid, n: uname(), a: 'access', e: 'team', s: `${a.e} role → ${r}` } }); toast('Role updated'); }
+async function setTeamMgr(uid, on) { if (!isAdmin()) return; const a = (S.meta.access || {})[uid] || {}; await FBX.update({ [sp(`meta/access/${uid}/tm`)]: on ? true : null, [sp('audit/' + FBX.key('a'))]: { at: FBX.ts(), u: S.user.uid, n: uname(), a: 'access', e: 'team', s: `${a.e} ${on ? 'can now' : 'can no longer'} add / remove staff` } }); toast(on ? 'Allowed to add / remove staff' : 'Permission removed'); }
+async function removeAccess(uid) { const a = (S.meta.access || {})[uid] || {}; if (!canManage(uid, a)) return toast('Only an admin can do that', 'err'); if (!await confirmBox(`Remove ${esc(a.e)} from this society?`, { danger: true })) return; await FBX.update({ [sp('meta/access/' + uid)]: null, [`userSocieties/${uid}/${S.sid}`]: null, [sp('audit/' + FBX.key('a'))]: { at: FBX.ts(), u: S.user.uid, n: uname(), a: 'access', e: 'team', s: `${a.e} removed` } }); toast('Removed'); }
 
 // ── Audit trail ──────────────────────────────────────────────────────────
 let AUD = [];
@@ -3550,147 +3565,154 @@ async function carryForward(final) {
 
 // ── Realtime Database security rules (also in FIREBASE_SETUP.md) ─────────
 const RULES_JSON = `{
-  "rules": {
-    "users": {
-      "$uid": {
-        ".read": "auth != null",
-        ".write": "auth != null && auth.uid === $uid"
-      }
-    },
-    "emailIndex": {
-      "$k": {
-        ".read": "auth != null",
-        ".write": "auth != null && newData.val() === auth.uid && $k === auth.token.email.toLowerCase().replace('.', ',')"
-      }
-    },
-    "userSocieties": {
-      "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        "$sid": {
-          ".write": "auth != null && ((auth.uid === $uid && (root.child('firm/approved/'+auth.uid).exists() || root.child('firm/admins/'+auth.uid).exists()) && !root.child('societies/'+$sid).exists()) || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin')"
-        }
-      }
-    },
-    "publicLedgers": {
-      "$tok": {
-        ".read": true,
-        ".write": "auth != null && (newData.exists() ? (root.child('societies/'+newData.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+newData.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'accountant') : (root.child('societies/'+data.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+data.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'accountant'))"
-      }
-    },
-    "societies": {
-      "$sid": {
-        ".read": "auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid).exists()",
-        ".write": "auth != null && ((!data.exists() && (root.child('firm/approved/'+auth.uid).exists() || root.child('firm/admins/'+auth.uid).exists()) && newData.child('meta/owner').val() === auth.uid && newData.child('meta/access/'+auth.uid+'/r').val() === 'admin') || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin')",
-        "heads": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "members": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "bcfg": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "pending": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "runs": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "ob": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "counters": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "locks": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "summary": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "inv": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "fa": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "mtg": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "ntc": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "cmp": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "shr": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "brs": {
-          ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-        },
-        "fys": {
-          "$fy": {
-            ".write": "!data.exists() && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-          }
-        },
-        "audit": {
-          "$a": {
-            ".write": "!data.exists() && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-          }
-        },
-        "presence": {
-          "$uid": {
-            ".write": "auth != null && auth.uid === $uid && root.child('societies/'+$sid+'/meta/access/'+auth.uid).exists()"
-          }
-        },
-        "vch": {
-          "$fy": {
-            "$id": {
-              ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && root.child('societies/'+$sid+'/fys/'+$fy+'/closed').val() !== true",
-              "clr": {
-                ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
-              }
-            }
-          }
-        },
-        "bills": {
-          "$fy": {
-            "$id": {
-              ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && root.child('societies/'+$sid+'/fys/'+$fy+'/closed').val() !== true"
-            }
-          }
-        }
-      }
-    },
-    "firm": {
-      "admins": {
-        ".read": "auth != null",
-        "$uid": {
-          ".write": "auth != null && ((root.child('firm/admins/'+auth.uid).exists()) || ($uid === auth.uid && !root.child('firm/admins').exists()))"
-        }
-      },
-      "approved": {
-        ".read": "root.child('firm/admins/'+auth.uid).exists()",
-        "$uid": {
-          ".read": "auth != null && auth.uid === $uid",
-          ".write": "root.child('firm/admins/'+auth.uid).exists()"
-        }
-      },
-      "pending": {
-        ".read": "root.child('firm/admins/'+auth.uid).exists()",
-        "$uid": {
-          ".write": "auth != null && ((root.child('firm/admins/'+auth.uid).exists()) || ($uid === auth.uid && newData.exists()))"
-        }
-      },
-      "rejected": {
-        "$uid": {
-          ".read": "auth != null && auth.uid === $uid",
-          ".write": "root.child('firm/admins/'+auth.uid).exists()"
-        }
-      }
+ "rules": {
+  "users": {
+   "$uid": {
+    ".read": "auth != null",
+    ".write": "auth != null && auth.uid === $uid"
+   }
+  },
+  "emailIndex": {
+   "$k": {
+    ".read": "auth != null",
+    ".write": "auth != null && newData.val() === auth.uid && $k === auth.token.email.toLowerCase().replace('.', ',')"
+   }
+  },
+  "userSocieties": {
+   "$uid": {
+    ".read": "auth != null && auth.uid === $uid",
+    "$sid": {
+     ".write": "auth != null && ((auth.uid === $uid && (root.child('firm/approved/'+auth.uid).exists() || root.child('firm/admins/'+auth.uid).exists()) && !root.child('societies/'+$sid).exists()) || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || (auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/tm').val() === true && $uid !== auth.uid && root.child('societies/'+$sid+'/meta/access/'+$uid+'/r').val() !== 'admin' && root.child('societies/'+$sid+'/meta/access/'+$uid+'/tm').val() !== true && (!newData.exists() || newData.val() === 'accountant' || newData.val() === 'viewer')))"
     }
+   }
+  },
+  "publicLedgers": {
+   "$tok": {
+    ".read": true,
+    ".write": "auth != null && (newData.exists() ? (root.child('societies/'+newData.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+newData.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'accountant') : (root.child('societies/'+data.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+data.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'accountant'))"
+   }
+  },
+  "societies": {
+   "$sid": {
+    ".read": "auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid).exists()",
+    ".write": "auth != null && ((!data.exists() && (root.child('firm/approved/'+auth.uid).exists() || root.child('firm/admins/'+auth.uid).exists()) && newData.child('meta/owner').val() === auth.uid && newData.child('meta/access/'+auth.uid+'/r').val() === 'admin') || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin')",
+    "heads": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "members": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "bcfg": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "pending": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "runs": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "ob": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "counters": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "locks": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "summary": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "inv": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "fa": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "mtg": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "ntc": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "cmp": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "shr": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "brs": {
+     ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    },
+    "fys": {
+     "$fy": {
+      ".write": "!data.exists() && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+     }
+    },
+    "audit": {
+     "$a": {
+      ".write": "!data.exists() && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/tm').val() === true)"
+     }
+    },
+    "presence": {
+     "$uid": {
+      ".write": "auth != null && auth.uid === $uid && root.child('societies/'+$sid+'/meta/access/'+auth.uid).exists()"
+     }
+    },
+    "vch": {
+     "$fy": {
+      "$id": {
+       ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && root.child('societies/'+$sid+'/fys/'+$fy+'/closed').val() !== true",
+       "clr": {
+        ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+       }
+      }
+     }
+    },
+    "bills": {
+     "$fy": {
+      "$id": {
+       ".write": "(root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && root.child('societies/'+$sid+'/fys/'+$fy+'/closed').val() !== true"
+      }
+     }
+    },
+    "meta": {
+     "access": {
+      "$u": {
+       ".write": "auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/tm').val() === true && $u !== auth.uid && (!data.exists() || (data.child('r').val() !== 'admin' && data.child('tm').val() !== true)) && (!newData.exists() || ((newData.child('r').val() === 'accountant' || newData.child('r').val() === 'viewer') && !newData.child('tm').exists()))"
+      }
+     }
+    }
+   }
+  },
+  "firm": {
+   "admins": {
+    ".read": "auth != null",
+    "$uid": {
+     ".write": "auth != null && ((root.child('firm/admins/'+auth.uid).exists()) || ($uid === auth.uid && !root.child('firm/admins').exists()))"
+    }
+   },
+   "approved": {
+    ".read": "root.child('firm/admins/'+auth.uid).exists()",
+    "$uid": {
+     ".read": "auth != null && auth.uid === $uid",
+     ".write": "root.child('firm/admins/'+auth.uid).exists()"
+    }
+   },
+   "pending": {
+    ".read": "root.child('firm/admins/'+auth.uid).exists()",
+    "$uid": {
+     ".write": "auth != null && ((root.child('firm/admins/'+auth.uid).exists()) || ($uid === auth.uid && newData.exists()))"
+    }
+   },
+   "rejected": {
+    "$uid": {
+     ".read": "auth != null && auth.uid === $uid",
+     ".write": "root.child('firm/admins/'+auth.uid).exists()"
+    }
+   }
   }
+ }
 }`;
 
 // ═══════════════════════════════════════════════════════════════════════
