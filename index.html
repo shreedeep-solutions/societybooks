@@ -12,8 +12,8 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getDatabase, ref, get, set, update, remove, push, onValue, runTransaction, serverTimestamp, onDisconnect, query, orderByKey, limitToLast } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-  window.FBSDK = { initializeApp, getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile, getDatabase, ref, get, set, update, remove, push, onValue, runTransaction, serverTimestamp, onDisconnect, query, orderByKey, limitToLast };
+  import { getDatabase, ref, get, set, update, remove, push, onValue, runTransaction, serverTimestamp, onDisconnect, query, orderByKey, limitToLast, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  window.FBSDK = { initializeApp, getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile, getDatabase, ref, get, set, update, remove, push, onValue, runTransaction, serverTimestamp, onDisconnect, query, orderByKey, limitToLast, startAt, endAt };
   window.dispatchEvent(new Event('fbsdk'));
 </script>
 <style>
@@ -706,6 +706,7 @@ const FBX = {
   onDisconnectRemove(p) { return this.F.onDisconnect(this.r(p)).remove(); },
   connected(cb) { return this.listen('.info/connected', v => cb(!!v)); },
   async lastN(p, n) { const s = await this.F.get(this.F.query(this.r(p), this.F.orderByKey(), this.F.limitToLast(n))); return s.val() || {}; },
+  async range(p, from, to, n) { const s = await this.F.get(this.F.query(this.r(p), this.F.orderByKey(), this.F.startAt(from), this.F.endAt(to), this.F.limitToLast(n))); return s.val() || {}; },
   onAuth(cb) { return this.F.onAuthStateChanged(this.auth, cb); },
   async login(e, p, remember) { await this.persist(!!remember); return this.F.signInWithEmailAndPassword(this.auth, e, p); },
   register(e, p) { return this.F.createUserWithEmailAndPassword(this.auth, e, p); },
@@ -1016,7 +1017,7 @@ const NAV_SOC = [
   ['Reports', [['books', '📚', 'Complete Books (PDF + Excel)'], ['dues', '🔴', 'Dues & Ageing'], ['billreg', '🗂', 'Bill Register'], ['rcptreg', '🧾', 'Receipt Register'], ['payreg', '📤', 'Payment Register'], ['jbook', '📓', 'Journal Book'], ['collect', '📈', 'Collection Summary'], ['gstreg', '🏛', 'GST Register'], ['tdsreg', '✂️', 'TDS Register']]],
   ['Masters', [['heads', '🗃', 'Account Heads'], ['members', '👥', 'Members'], ['obal', '🏁', 'Opening Balances']]],
   ['Banking', [['recon', '🔍', 'Bank Reconciliation']]],
-  ['Registers', [['inv', '💰', 'Investments (FD/RD)'], ['fa', '🏗', 'Fixed Assets'], ['shares', '📜', 'Share Register'], ['meetings', '🤝', 'Meetings'], ['notices', '📢', 'Notices & Letters'], ['complaints', '📩', 'Complaints']]],
+  ['Registers', [['inv', '💰', 'Investments (FD/RD)'], ['fdw', '🏦', 'FD Working'], ['fa', '🏗', 'Fixed Assets'], ['shares', '📜', 'Share Register'], ['meetings', '🤝', 'Meetings'], ['notices', '📢', 'Notices & Letters'], ['complaints', '📩', 'Complaints']]],
   ['Administration', [['year', '📅', 'Year-End & Locks'], ['team', '🔐', 'Team & Access'], ['audit', '🕵️', 'Audit Trail'], ['data', '💾', 'Data Tools'], ['settings', '⚙️', 'Settings']]],
 ];
 function buildSide() {
@@ -1241,6 +1242,7 @@ function excelDate(v) {
   if (!v) return ''; if (v instanceof Date) return ymd(v);
   if (typeof v === 'number') { const d = new Date(Math.round((v - 25569) * 864e5)); return ymd(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); }
   const s = String(v).trim(); let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  const mm = s.match(/^(\d{1,2})[\s\-\/.]+([A-Za-z]{3})[A-Za-z]*[\s\-\/.,]+(\d{2,4})$/); if (mm) { const mi = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(mm[2].toLowerCase()); if (mi >= 0) { const y = mm[3].length === 2 ? '20' + mm[3] : mm[3]; const r = `${y}-${pad(mi + 1)}-${pad(mm[1])}`; return isYmd(r) ? r : ''; } }
   if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; const r = `${y}-${pad(m[2])}-${pad(m[1])}`; return isYmd(r) ? r : ''; }
   m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return isYmd(m[0]) ? m[0] : '';
   const d = new Date(s); return isNaN(d) ? '' : ymd(d);
@@ -3565,19 +3567,27 @@ async function removeAccess(uid) { const a = (S.meta.access || {})[uid] || {}; i
 
 // ── Audit trail ──────────────────────────────────────────────────────────
 let AUD = [];
+// Audit entries are kept forever. Keys are time-ordered, so any date range can be fetched without loading the rest.
+const PUSH_CH = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+const keyAt = ts => { let k = ''; for (let i = 0; i < 8; i++) { k = PUSH_CH.charAt(ts % 64) + k; ts = Math.floor(ts / 64); } return k; };
+const AUD_MAX = 20000;
 page('audit', {
   async render() {
-    shell('🕵️ Audit Trail', 'Every change: who, when, what', `<button class="ghost" onclick="audOut()">📥 Excel</button>`, loading());
-    try { const d = await FBX.lastN(sp('audit'), 1000); AUD = Object.entries(d).map(([k, v]) => ({ k, ...v })).sort((a, b) => (b.at || 0) - (a.at || 0)); } catch (e) { AUD = []; toast(e.message, 'err'); }
+    const f = RP.get('auf', '') || ymd(new Date(Date.now() - 90 * 864e5)), t = RP.get('aut', '') || today();
+    shell('🕵️ Audit Trail', 'Every change: who, when, what — kept permanently', '', loading());
+    let more = false;
+    try { const d = await FBX.range(sp('audit'), keyAt(pd(f).getTime()), keyAt(pd(t).getTime() + 864e5) , AUD_MAX + 1); AUD = Object.entries(d).map(([k, v]) => ({ k, ...v })).sort((a, b) => (b.at || 0) - (a.at || 0)); if (AUD.length > AUD_MAX) { more = true; AUD = AUD.slice(0, AUD_MAX); } } catch (e) { AUD = []; toast(e.message, 'err'); }
     const users = Array.from(new Set(AUD.map(a => a.n).filter(Boolean)));
-    shell('🕵️ Audit Trail', 'Every change: who, when, what (latest 1,000)', `<button class="ghost" onclick="audOut()">📥 Excel</button><button class="ghost" onclick="render()">↻</button>`,
-      `<div class="toolbar" data-form><input id="au-q" placeholder="Search text, voucher no…" oninput="audF()"><select id="au-u" onchange="audF()"><option value="">All users</option>${users.map(u => `<option>${esc(u)}</option>`).join('')}</select><select id="au-a" onchange="audF()"><option value="">All actions</option>${['create', 'edit', 'delete', 'bill', 'bounce', 'recalc', 'lock', 'close', 'access', 'import', 'restore', 'settings'].map(a => `<option>${a}</option>`).join('')}</select></div><div id="au-res"></div>`);
+    shell('🕵️ Audit Trail', 'Every change: who, when, what — kept permanently, pick any period', `<button class="ghost" onclick="audOut()">📥 Excel</button><button class="ghost" onclick="render()">↻</button>`,
+      `<div class="toolbar" data-form><label style="margin:0">From</label><input type="date" id="au-f" value="${f}" onchange="RP.set('auf',this.value);render()"><label style="margin:0">To</label><input type="date" id="au-t" value="${t}" onchange="RP.set('aut',this.value);render()"><select onchange="if(this.value){const [a,b]=this.value.split('|');RP.set('auf',a);RP.set('aut',b);render()}"><option value="">Quick…</option><option value="${ymd(new Date(Date.now() - 7 * 864e5))}|${today()}">Last 7 days</option><option value="${ymd(new Date(Date.now() - 30 * 864e5))}|${today()}">Last 30 days</option><option value="${S.fy.start}|${S.fy.end}">This FY ${esc(S.fy.label)}</option><option value="2000-01-01|${today()}">Everything</option></select>
+      <input id="au-q" placeholder="Search text, voucher no…" oninput="audF()"><select id="au-u" onchange="audF()"><option value="">All users</option>${users.map(u => `<option>${esc(u)}</option>`).join('')}</select><select id="au-a" onchange="audF()"><option value="">All actions</option>${['create', 'edit', 'delete', 'bill', 'bounce', 'recalc', 'lock', 'close', 'access', 'settings', 'import', 'print', 'generate'].map(x => `<option>${x}</option>`).join('')}</select></div>
+      ${more ? `<div class="alert a-warn small">More than ${AUD_MAX.toLocaleString('en-IN')} changes in this period — showing the latest ${AUD_MAX.toLocaleString('en-IN')}. Choose a shorter period to see the rest.</div>` : ''}<div id="au-res"></div>`);
     audF();
   },
   refresh() { }
 });
 function audRows() { const q = val('au-q').toLowerCase(), u = val('au-u'), a = val('au-a'); return AUD.filter(x => (!u || x.n === u) && (!a || x.a === a) && (!q || `${x.s} ${x.e} ${x.id}`.toLowerCase().includes(q))); }
-function audF() { const R = audRows(); $('au-res').innerHTML = `<div class="tw tall"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>What</th><th>Details</th></tr></thead><tbody>${R.slice(0, 500).map(x => `<tr><td class="small" style="white-space:nowrap">${x.at ? new Date(x.at).toLocaleString('en-IN') : ''}</td><td class="small b">${esc(x.n || '')}</td><td><span class="tag ${x.a === 'delete' ? 't-err' : x.a === 'edit' ? 't-warn' : x.a === 'create' || x.a === 'bill' ? 't-ok' : 't-grey'}">${esc(x.a)}</span></td><td class="small">${esc(x.e || '')}</td><td class="small">${esc(x.s || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">No entries</td></tr>'}</tbody></table></div>${R.length > 500 ? `<div class="small muted">Showing 500 of ${R.length} — use search or export.</div>` : ''}`; }
+function audF() { const R = audRows(); $('au-res').innerHTML = `<div class="tw tall"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>What</th><th>Details</th></tr></thead><tbody>${R.slice(0, 2000).map(x => `<tr><td class="small" style="white-space:nowrap">${x.at ? new Date(x.at).toLocaleString('en-IN') : ''}</td><td class="small b">${esc(x.n || '')}</td><td><span class="tag ${x.a === 'delete' ? 't-err' : x.a === 'edit' ? 't-warn' : x.a === 'create' || x.a === 'bill' ? 't-ok' : 't-grey'}">${esc(x.a)}</span></td><td class="small">${esc(x.e || '')}</td><td class="small">${esc(x.s || '')}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">No entries</td></tr>'}</tbody></table></div><div class="small muted" style="margin-top:6px">${R.length.toLocaleString("en-IN")} change(s) in this period${R.length > 2000 ? " — showing the latest 2,000 on screen; Excel has all of them" : ""}.</div>`; }
 function audOut() { xlsx('Audit_Trail', [{ name: 'Audit', rows: [['When', 'User', 'Action', 'Entity', 'Ref', 'Details'], ...audRows().map(x => [x.at ? new Date(x.at).toLocaleString('en-IN') : '', x.n, x.a, x.e, x.id, x.s])], cols: [20, 16, 9, 14, 12, 80] }]); }
 
 // ── Settings ─────────────────────────────────────────────────────────────
@@ -4192,7 +4202,7 @@ page('inv', {
   render() {
     const L = Object.entries(S.inv || {}).filter(([, x]) => x).sort((a, b) => String(a[1].mat || '9').localeCompare(String(b[1].mat || '9')));
     const act = L.filter(([, x]) => x.status !== 'Closed'); const t = today();
-    shell('💰 Investments (FD / RD)', 'Register with maturity alerts, interest accrual and maturity entries', canEdit() ? `<button onclick="invModal()">+ Add FD / RD</button><button class="ghost" onclick="accrueModal()">Post interest accrual (FY ${esc(S.fy.label)})</button>` : '',
+    shell('💰 Investments (FD / RD)', 'Register with maturity alerts, interest accrual and maturity entries', canEdit() ? `<button onclick="invModal()">+ Add FD / RD</button><button class="ghost" onclick="go('fdw')">🏦 FD Working (from bank statement)</button><button class="ghost" onclick="accrueModal()">Quick accrual at rate</button>` : '',
       `<div class="grid g3" style="margin-bottom:12px"><div class="stat"><div class="v">₹${fmt(sum(act, ([, x]) => x.amt))}</div><div class="l">${act.length} active deposits</div></div><div class="stat"><div class="v">${act.filter(([, x]) => x.mat && x.mat >= t && daysBetween(t, x.mat) <= 30).length}</div><div class="l">Maturing in 30 days</div></div><div class="stat"><div class="v dr">${act.filter(([, x]) => x.mat && x.mat < t).length}</div><div class="l">Matured – not closed</div></div></div>
       <div class="tw tall"><table><thead><tr><th>Type</th><th>Bank / No.</th><th>Start</th><th class="n">Amount</th><th class="n">Rate</th><th>Maturity</th><th class="n">Maturity amt</th><th class="n">Accrued (this FY)</th><th>Status</th><th></th></tr></thead><tbody>
       ${L.map(([id, x]) => { const dl = x.mat ? daysBetween(t, x.mat) : null; const acc = ((x.acc || {})[S.fyId] || {}).amt; return `<tr style="${x.status === 'Closed' ? 'opacity:.55' : ''}"><td><span class="tag ${x.type === 'RD' ? 't-purple' : 't-blue'}">${esc(x.type)}</span></td><td><b>${esc(x.bank)}</b><div class="small muted">${esc(x.no || '')} · ${esc(H(x.head).name)}</div></td><td>${fd(x.start)}</td><td class="n">${fmt(x.amt)}${x.type === 'RD' ? '<div class="small muted">per month</div>' : ''}</td><td class="n">${x.rate}%</td><td>${fd(x.mat)}${x.status !== 'Closed' && dl != null ? `<div class="small ${dl < 0 ? 'dr' : dl <= 30 ? 'b' : 'muted'}">${dl < 0 ? 'matured ' + -dl + ' days ago' : dl + ' days left'}</div>` : ''}</td><td class="n">${x.matAmt ? fmt(x.matAmt) : ''}</td><td class="n">${acc ? fmt(acc) : ''}</td><td><span class="tag ${x.status === 'Closed' ? 't-grey' : 't-ok'}">${esc(x.status || 'Active')}</span></td><td class="row">${canEdit() ? `<button class="xs ghost" onclick="invModal('${id}')">✎</button>${x.status !== 'Closed' ? `<button class="xs" onclick="invMature('${id}')">Mature</button>` : ''}` : ''}</td></tr>`; }).join('') || '<tr><td colspan="10" class="empty">No deposits recorded</td></tr>'}</tbody></table></div>`);
@@ -4445,6 +4455,181 @@ function cmpModal(id) { const x = id ? S.cmp[id] : { d: today(), st: 'Open', cat
     onOk: async () => { const rec = { ...x, mid: val('cp-m') || null, d: val('cp-d'), cat: val('cp-c'), as: val('cp-a'), st: val('cp-s'), desc: $('cp-x').value.trim(), rem: val('cp-r'), ...stamp() }; if (!rec.desc) throw new Error('Describe the complaint');
       if (!id) { const r = await FBX.txn(sp('counters/cmp'), c => (+c || 0) + 1); rec.no = 'CMP-' + String(r.value).padStart(4, '0'); } if (rec.st === 'Closed' && !rec.closed) rec.closed = today();
       await commit({ ['cmp/' + (id || FBX.key('x'))]: rec }, { a: id ? 'edit' : 'create', e: 'complaint', s: `${rec.no} ${rec.cat}: ${rec.st}` }); toast('Saved'); } }); }
+
+// ═══════════════════════════════════════════════════════════════════════
+// FD WORKING — from the bank's accrued-interest / interest certificate
+// Per FD: interest paid or credited in the year, TDS, interest accrued on 31 March,
+// last year's accrual b/f → interest income for the year, and the journal entries.
+// Stored per year at brs/{fy}/fdwork (an existing per-year path, so no rule change is needed).
+// ═══════════════════════════════════════════════════════════════════════
+const FDW = { rows: [], dirty: false, prev: null };
+const fdwPath = fy => `brs/${fy || S.fyId}/fdwork`;
+const fdwSaved = () => ((S.brs || {}).fdwork) || {};
+const fdwHeads = () => headOptions(h => h.grp === 'Assets' && h.type === 'gen' && h.tag !== 'dues' && h.tag !== 'intacc');
+const fdwDefHead = () => { const o = fdwHeads(); return (o.find(x => /fixed dep|\bf\.?d\b/i.test(x.label)) || o[0] || {}).v || ''; };
+const fdwTdsHead = () => Object.keys(S.heads).find(k => S.heads[k] && S.heads[k].grp === 'Assets' && /tds\s*(receiv|recover|deduct|on\s*fd)|income\s*tax\s*refund/i.test(S.heads[k].name)) || '';
+const fdwNum = v => r2(numv(v));
+function fdwCalc(r) {
+  const paid = fdwNum(r.paid), tds = fdwNum(r.tds), acc = fdwNum(r.acc), accb = fdwNum(r.accb), princ = fdwNum(r.princ);
+  const income = r2(paid + acc - accb), net = r2(paid - tds);
+  // rough check at the stated rate for the days the FD ran in this year (simple interest)
+  const a = r.start && r.start > S.fy.start ? r.start : S.fy.start, b = r.mat && r.mat < S.fy.end ? r.mat : S.fy.end;
+  const days = isYmd(a) && isYmd(b) ? Math.max(0, daysBetween(a, b) + 1) : 0; const est = r2(princ * (+r.rate || 0) / 100 * days / 365);
+  return { paid, tds, acc, accb, princ, income, net, est, closing: r.kind === 'pay' ? princ : r2(princ + net) };
+}
+
+page('fdw', {
+  async render() {
+    const sv = fdwSaved(); FDW.rows = Object.values(sv.rows || {}).sort((a, b) => (a.o || 0) - (b.o || 0)).map(r => ({ ...r })); FDW.dirty = false;
+    FDW.payBank = sv.payBank || (headOptions(h => h.type === 'bank')[0] || {}).v || '';
+    shell('🏦 FD Working', `Interest on fixed deposits for FY ${esc(S.fy.label)} from the bank's interest / accrued-interest statement`,
+      `<button class="ghost" onclick="fdwTemplate().catch(e=>toast(e.message,'err'))">📄 Template</button><button class="ghost" onclick="fdwExcel()">📥 Excel</button><button class="ghost" onclick="fdwPrint()">🖨 Print</button>`,
+      `<div class="card" data-form style="margin-bottom:12px">
+        <div class="row" style="flex-wrap:wrap;gap:8px">${canEdit() ? `<button onclick="fdwImport()">📥 Import bank statement (Excel / CSV)</button><button class="ghost" onclick="fdwPaste()">📋 Paste from statement</button><button class="ghost" onclick="fdwFromRegister()">↧ Fill from Investments register</button><button class="ghost" onclick="fdwPrevBf()">↻ Accrued b/f from last year</button><button class="ghost" onclick="fdwAdd();fdwDraw()">+ Row</button>` : ''}</div>
+        <div class="small muted" style="margin-top:8px">One row per FD. Take <b>Interest paid / credited</b>, <b>TDS</b> and <b>Interest accrued as on ${fd(S.fy.end)}</b> from the bank statement. <b>Cumulative</b> = interest added to the FD; <b>Payout</b> = interest paid into the savings / current account. Income for the year = paid / credited + accrued now − accrued b/f.</div></div>
+      <div class="card"><div class="tw" style="overflow:auto"><table class="ent" id="fdw-t" style="min-width:1700px"></table></div>
+      <div class="row" style="margin-top:10px;flex-wrap:wrap"><span id="fdw-tot" class="small"></span><span class="spacer"></span>${canEdit() ? `<label class="small" style="margin:0">Payout interest credited to</label><div style="width:220px">${accPicker('fdw-pb', headOptions(h => h.type === 'bank'), { value: FDW.payBank, onchange: 'fdwPB' })}</div><button class="ghost" onclick="fdwSave()">💾 Save working</button><button onclick="fdwPostModal()">✓ Preview & post entries</button>` : ''}</div>
+      <div id="fdw-msg"></div></div>
+      <div class="card" style="margin-top:12px"><h3>Entries passed from this working</h3><div id="fdw-posted"></div></div>`);
+    if (!FDW.rows.length) fdwAdd();
+    fdwDraw();
+  },
+  refresh() { if (!FDW.dirty) this.render(); else fdwPostedList(); }
+});
+function fdwPB(v) { FDW.payBank = v; FDW.dirty = true; }
+function fdwAdd(r = {}) { FDW.rows.push({ id: FBX.key('x'), o: Date.now() + FDW.rows.length, bank: '', no: '', kind: 'cum', start: '', mat: '', rate: '', princ: '', paid: '', tds: '', acc: '', accb: '', head: fdwDefHead(), inBooks: false, ...r }); FDW.dirty = true; }
+const FDW_COLS_ = () => [['bank', 'Bank', 'text', 105], ['no', 'FD No.', 'text', 150], ['kind', 'Type', 'kind', 105], ['princ', 'Principal / balance ₹', 'num', 115], ['paid', 'Interest paid / credited ₹', 'num', 110], ['tds', 'TDS ₹', 'num', 90], ['acc', `Accrued on ${fd(S.fy && S.fy.end)} ₹`, 'num', 105], ['accb', 'Accrued b/f ₹', 'num', 100]];
+const FDW_MORE = [['rate', 'Rate %', 'num', 70], ['start', 'Start', 'date', 125], ['mat', 'Maturity', 'date', 125]];
+function fdwDraw() {
+  const t = $('fdw-t'); if (!t) return; const FDW_COLS = FDW_COLS_(); const ro = canEdit() ? '' : 'disabled'; const heads = fdwHeads();
+  t.innerHTML = `<thead><tr><th style="width:30px">#</th>${FDW_COLS.map(([k, l, ty, w]) => `<th class="${ty === 'num' ? 'n' : ''}" style="min-width:${w}px">${esc(l)}</th>`).join('')}<th class="n">Income for year ₹</th><th class="n" title="Principal × rate × days in this year ÷ 365">Check at rate ₹</th>${FDW_MORE.map(([k, l, ty, w]) => `<th class="${ty === 'num' ? 'n' : ''}" style="min-width:${w}px">${esc(l)}</th>`).join('')}<th style="min-width:170px">FD account head</th><th title="Payout FDs: the net interest is already entered in the bank book">Net already in bank book</th><th></th></tr></thead><tbody>
+  ${FDW.rows.map((r, i) => { const c = fdwCalc(r); const off = c.est && c.income && Math.abs(c.income - c.est) > Math.max(100, c.est * 0.1);
+    return `<tr data-i="${i}"><td class="small muted">${i + 1}</td>${FDW_COLS.map(([k, , ty]) => `<td>${ty === 'kind' ? `<select data-k="${k}" ${ro} onchange="fdwSet(this)"><option value="cum" ${r.kind !== 'pay' ? 'selected' : ''}>Cumulative</option><option value="pay" ${r.kind === 'pay' ? 'selected' : ''}>Payout</option></select>` : `<input data-k="${k}" ${ty === 'date' ? 'type="date"' : ty === 'num' ? 'class="num"' : ''} value="${esc(r[k] == null ? '' : r[k])}" ${ro} onchange="fdwSet(this)">`}</td>`).join('')}
+    <td class="n b">${fmt(c.income)}</td><td class="n small ${off ? 'dr' : 'muted'}" title="${off ? 'Differs from the bank figure by more than 10% — check the statement' : ''}">${c.est ? fmt(c.est) : ''}${off ? ' ⚠' : ''}</td>${FDW_MORE.map(([k, , ty]) => `<td><input data-k="${k}" ${ty === 'date' ? 'type="date"' : 'class="num"'} value="${esc(r[k] == null ? '' : r[k])}" ${ro} onchange="fdwSet(this)"></td>`).join('')}
+    <td><select data-k="head" ${ro} onchange="fdwSet(this)">${heads.map(o => `<option value="${o.v}" ${r.head === o.v ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select></td>
+    <td class="center">${r.kind === 'pay' ? `<input type="checkbox" data-k="inBooks" ${r.inBooks ? 'checked' : ''} ${ro} onchange="fdwSet(this)">` : ''}</td><td>${canEdit() ? `<button class="xs ghost" onclick="FDW.rows.splice(${i},1);FDW.dirty=true;fdwDraw()">✕</button>` : ''}</td></tr>`; }).join('')}</tbody>
+  <tfoot>${(() => { const C = FDW.rows.map(fdwCalc); const T = k => fmt(sum(C, c => c[k])); return `<tr class="tot"><td></td><td colspan="3">Total (${FDW.rows.length} FDs)</td><td class="n">${T('princ')}</td><td class="n">${T('paid')}</td><td class="n">${T('tds')}</td><td class="n">${T('acc')}</td><td class="n">${T('accb')}</td><td class="n">${T('income')}</td><td class="n small muted">${T('est')}</td><td colspan="6"></td></tr>`; })()}</tfoot>`;
+  const C = FDW.rows.map(fdwCalc); const tot = $('fdw-tot'); if (tot) tot.innerHTML = `Interest income for FY ${esc(S.fy.label)}: <b>₹${fmt(sum(C, c => c.income))}</b> · TDS ₹${fmt(sum(C, c => c.tds))} · accrued ₹${fmt(sum(C, c => c.acc))}${FDW.dirty ? ' · <span class="dr">not saved</span>' : ''}`;
+  fdwPostedList();
+}
+function fdwSet(el) { const i = +el.closest('tr').dataset.i; const k = el.dataset.k; FDW.rows[i][k] = el.type === 'checkbox' ? el.checked : el.value; FDW.dirty = true; fdwDraw(); }
+async function fdwSave(quiet) {
+  guardEdit(); const rows = {}; FDW.rows.filter(r => r.no || r.bank || fdwNum(r.paid) || fdwNum(r.acc) || fdwNum(r.princ)).forEach((r, i) => { rows[r.id] = { ...r, o: i }; });
+  await commit({ [fdwPath()]: { rows, payBank: FDW.payBank || '', at: Date.now(), by: uname() } }, { a: 'edit', e: 'FD working', s: `FD working FY ${S.fy.label}: ${Object.keys(rows).length} FDs, income ₹${fmt(sum(Object.values(rows), r => fdwCalc(r).income))}` });
+  FDW.dirty = false; if (!quiet) toast('FD working saved'); fdwDraw();
+}
+
+// ── Bringing figures in ──────────────────────────────────────────────────
+function fdwFromRegister() {
+  const have = new Set(FDW.rows.map(r => String(r.no).trim()).filter(Boolean)); let n = 0;
+  for (const x of Object.values(S.inv || {})) { if (!x || x.type !== 'FD') continue; if (x.status === 'Closed' && !(x.closed && x.closed.d >= S.fy.start)) continue; if (x.start > S.fy.end) continue; if (have.has(String(x.no || '').trim()) && x.no) continue;
+    fdwAdd({ bank: x.bank || '', no: x.no || '', start: x.start || '', mat: x.mat || '', rate: x.rate || '', princ: x.amt || '', head: x.head || fdwDefHead() }); n++; }
+  FDW.rows = FDW.rows.filter(r => r.no || r.bank || r.princ || r.paid || r.acc); if (!FDW.rows.length) fdwAdd();
+  toast(n ? `${n} FD(s) added from the Investments register — now enter the bank figures` : 'No new FDs in the register', n ? 'ok' : 'warn'); fdwDraw();
+}
+async function fdwPrevBf() {
+  const pid = typeof prevFyId === 'function' ? prevFyId() : null; let prev = null; if (pid) { try { prev = await FBX.get(sp(fdwPath(pid))); } catch (e) { } }
+  const P = Object.values((prev || {}).rows || {}); if (!P.length) return toast(pid ? `No FD working saved for FY ${S.fys[pid].label}` : 'Last year is not in this software — enter "Accrued b/f" from last year\'s statement', 'warn', 7000);
+  let n = 0, add = 0; const key = r => String(r.no || '').replace(/\s+/g, '').toLowerCase();
+  for (const p of P) { const acc = fdwNum(p.acc); const r = FDW.rows.find(x => key(x) && key(x) === key(p));
+    if (r) { r.accb = acc || ''; n++; } else if (acc || p.kind !== 'pay') { const c = fdwCalc(p); fdwAdd({ bank: p.bank, no: p.no, kind: p.kind, start: p.start, mat: p.mat, rate: p.rate, princ: c.closing || p.princ, accb: acc || '', head: p.head }); add++; } }
+  FDW.rows = FDW.rows.filter(r => r.no || r.bank || r.princ || r.paid || r.acc || r.accb); toast(`Accrued b/f filled for ${n} FD(s)${add ? `, ${add} FD(s) carried from last year` : ''}`); fdwDraw();
+}
+// Column detection for bank statements (HDFC, SBI, Saraswat, Canara… all name columns differently)
+const FDW_MATCH = [
+  ['acc', /accru|provision|receivable|int.*due.*not|outstanding.*int/],
+  ['tds', /tds|tax.*deduct|deducted.*tax|^tax$/],
+  ['paid', /(int|interest).*(paid|credit|capital|reinvest|receiv|applied)|^(paid|credited)/],
+  ['mat', /matur.*(date|dt|on)|^maturity$|duedate|^due$/],
+  ['start', /open|start|issue|value.*date|deposit.*date|date.*deposit|^from|placement|booking|^date$/],
+  ['rate', /rate|roi|%/],
+  ['no', /(fd|tdr|stdr|deposit|account|acct|a\/?c|receipt|reference).*(no|num|id)|^(fd|tdr|deposit|account)$/],
+  ['princ', /principal|deposit.*amount|amount.*deposit|invest|original|^amount$|^balance$|book.*balance|face/],
+  ['kind', /type|scheme|product|nature/],
+];
+function fdwMapHeader(row) { const map = {}; row.forEach((h, i) => { const n = String(h || '').toLowerCase().replace(/\s+/g, ' ').trim(); if (!n) return; for (const [k, re] of FDW_MATCH) { if (map[k] != null) continue; if (k === 'princ' && /int|tds|tax|matur/.test(n)) continue; if (k === 'start' && /matur/.test(n)) continue; if (re.test(n.replace(/[^a-z0-9%/ ]/g, '').replace(/ /g, ''))) { map[k] = i; break; } } }); return map; }
+function fdwFromTable(aoa, bank) {
+  let hi = -1, map = {}; for (let i = 0; i < Math.min(aoa.length, 40); i++) { const m = fdwMapHeader(aoa[i] || []); if (Object.keys(m).length >= 3 && (m.paid != null || m.acc != null)) { hi = i; map = m; break; } }
+  if (hi < 0) throw new Error('Could not find the column headings (FD no., interest paid, TDS, accrued interest). Use the Template, or Paste with the heading row included.');
+  const out = [];
+  for (const row of aoa.slice(hi + 1)) { if (!row || !row.length) continue; const g = k => (map[k] != null ? row[map[k]] : ''); const no = String(g('no') == null ? '' : g('no')).trim();
+    const nums = ['princ', 'paid', 'tds', 'acc'].map(k => fdwNum(g(k))); if (!no && !nums.some(Boolean)) continue; if (/total/i.test(no) || /total/i.test(String(row[0] || ''))) continue;
+    const ty = String(g('kind') || '').toLowerCase(); out.push({ bank, no, kind: /payout|monthly|quarterly int|mis|qip|non.?cum|interest paid/.test(ty) ? 'pay' : 'cum', start: excelDate(g('start')), mat: excelDate(g('mat')), rate: fdwNum(g('rate')) || '', princ: nums[0] || '', paid: nums[1] || '', tds: nums[2] || '', acc: nums[3] || '' }); }
+  if (!out.length) throw new Error('No FD rows found under the headings.');
+  return { out, found: Object.keys(map) };
+}
+function fdwMerge(list) { // update FDs already in the grid (same FD no.), add the rest
+  const key = r => String(r.no || '').replace(/\s+/g, '').toLowerCase(); let u = 0, a = 0;
+  FDW.rows = FDW.rows.filter(r => r.no || r.bank || r.princ || r.paid || r.acc || r.accb);
+  for (const x of list) { const r = key(x) && FDW.rows.find(y => key(y) === key(x)); const reg = Object.values(S.inv || {}).find(i => i && key(i) && key(i) === key(x));
+    const fill = Object.fromEntries(Object.entries(x).filter(([, v]) => v !== '' && v != null));
+    if (r) { Object.assign(r, fill); u++; } else { fdwAdd({ head: (reg && reg.head) || fdwDefHead(), start: (reg && reg.start) || '', mat: (reg && reg.mat) || '', rate: (reg && reg.rate) || '', ...fill }); a++; } }
+  if (!FDW.rows.length) fdwAdd(); fdwDraw(); return { u, a };
+}
+async function fdwAskBank() { const b = await promptBox('Bank name for these FDs (as it should appear in the working)', (FDW.rows.find(r => r.bank) || {}).bank || '', { title: 'Bank' }); return b == null ? null : b; }
+function fdwImport() {
+  pickFile('.xlsx,.xls,.csv', async f => {
+    try { const aoa = await readSheet(f, { header: 1 }); const bank = await fdwAskBank(); if (bank == null) return; const { out, found } = fdwFromTable(aoa, bank); const m = fdwMerge(out);
+      toast(`${out.length} FD row(s) read — ${m.a} added, ${m.u} updated. Columns found: ${found.join(', ')}. Check and Save.`, 'ok', 8000); } catch (e) { toast(e.message, 'err', 8000); }
+  });
+}
+function fdwPaste() {
+  openModal({ title: '📋 Paste from bank statement', wide: true, ok: 'Read', body: `<p class="small muted" style="margin-bottom:8px">Select the FD table in the bank's PDF or Excel <b>including the heading row</b>, copy (Ctrl+C) and paste below (Ctrl+V).</p><div data-form><div class="fr"><div><label>Bank</label><input id="fp-b" value="${esc((FDW.rows.find(r => r.bank) || {}).bank || '')}"></div></div><textarea id="fp-t" rows="12" style="width:100%;font-family:var(--mono);font-size:12px" placeholder="FD No.\tPrincipal\tRate\tOpen date\tMaturity\tInterest paid\tTDS\tAccrued interest"></textarea></div>`,
+    onOk: () => { const txt = $('fp-t').value; const aoa = txt.split(/\r?\n/).map(l => (l.includes('\t') ? l.split('\t') : l.split(/\s{2,}|,(?=(?:[^"]*"[^"]*")*[^"]*$)/)).map(c => c.replace(/^"|"$/g, '').trim())).filter(r => r.some(Boolean));
+      const { out, found } = fdwFromTable(aoa, val('fp-b')); const m = fdwMerge(out); toast(`${out.length} FD row(s) read — ${m.a} added, ${m.u} updated (columns: ${found.join(', ')}). Check and Save.`, 'ok', 8000); } });
+}
+async function fdwTemplate() {
+  await xlTemplate(`FD_Working_Template_${(S.meta.name || '').replace(/\W+/g, '_').slice(0, 30)}`, { sheet: 'FD Working', title: `FD working — ${S.meta.name || ''} (FY ${S.fy.label})`, rows: 100,
+    cols: [{ h: 'FD No', type: 'text', w: 18 }, { h: 'Type', list: 'Types', w: 13 }, { h: 'Open date', type: 'date', w: 13 }, { h: 'Maturity date', type: 'date', w: 13 }, { h: 'Rate %', w: 9 }, { h: 'Principal amount', type: 'amt', w: 16 }, { h: 'Interest paid / credited', type: 'amt', w: 18 }, { h: 'TDS', type: 'amt', w: 12 }, { h: 'Accrued interest', type: 'amt', w: 16 }],
+    lists: { Types: ['Cumulative', 'Payout'] }, help: ['One row per FD, figures from the bank\'s interest certificate / accrued interest statement for FY ' + S.fy.label + '.', 'Interest paid / credited: interest for the year paid to the savings account (Payout) or added to the FD (Cumulative).', 'Accrued interest: interest earned up to ' + fd(S.fy.end) + ' but not yet paid / credited.', 'Then: FD Working → Import bank statement → choose this file.'] });
+}
+
+// ── Journal entries ──────────────────────────────────────────────────────
+function fdwEntries(bf) {
+  const I = IDS(); const C = FDW.rows.map(r => ({ r, c: fdwCalc(r) })); const tdsH = fdwTdsHead() || '__TDS__'; const E = [];
+  if (bf > 0) E.push({ k: 'rev', d: S.fy.start, nar: `Reversal of interest accrued on FDs b/f as on ${fd(S.fy.start)}`, lines: [{ h: I.fdint, dr: bf }, { h: I.intacc, cr: bf }] });
+  const cum = C.filter(x => x.r.kind !== 'pay' && x.c.paid > 0);
+  if (cum.length) { const by = {}; cum.forEach(x => { by[x.r.head] = r2((by[x.r.head] || 0) + x.c.net); }); const tds = sum(cum, x => x.c.tds), gross = sum(cum, x => x.c.paid);
+    E.push({ k: 'cr', d: S.fy.end, nar: `Interest credited to cumulative FDs for FY ${S.fy.label} (${cum.map(x => x.r.no || x.r.bank).join(', ')})`.slice(0, 280), lines: [...Object.entries(by).filter(([, a]) => a).map(([h, a]) => ({ h, dr: r2(a) })), ...(tds ? [{ h: tdsH, dr: r2(tds) }] : []), { h: I.fdint, cr: r2(gross) }] }); }
+  const pay = C.filter(x => x.r.kind === 'pay' && (x.c.paid > 0 || x.c.tds > 0));
+  if (pay.length) { const nb = pay.filter(x => !x.r.inBooks), ib = pay.filter(x => x.r.inBooks); const net = sum(nb, x => x.c.net), tds = sum(pay, x => x.c.tds), cr = r2(sum(nb, x => x.c.paid) + sum(ib, x => x.c.tds));
+    if (cr > 0) E.push({ k: 'pay', d: S.fy.end, nar: `Interest on payout FDs for FY ${S.fy.label}${ib.length ? ' (TDS grossed up where the net interest is already in the bank book)' : ''}`, lines: [...(net > 0 ? [{ h: FDW.payBank, dr: r2(net) }] : []), ...(tds ? [{ h: tdsH, dr: r2(tds) }] : []), { h: I.fdint, cr }] }); }
+  const acc = r2(sum(C, x => x.c.acc)); if (acc > 0) E.push({ k: 'acc', d: S.fy.end, nar: `Interest accrued on FDs as on ${fd(S.fy.end)} as per bank statement`, lines: [{ h: I.intacc, dr: acc }, { h: I.fdint, cr: acc }] });
+  return E;
+}
+const FDW_K = { rev: 'Reverse last year\'s accrual', cr: 'Interest credited to cumulative FDs', pay: 'Interest on payout FDs', acc: 'Interest accrued at year end' };
+const fdwVch = k => Object.entries(S.vch).find(([, v]) => v && v.fdw === S.fyId + ':' + k);
+function fdwPostModal() {
+  const I = IDS(); if (!I.fdint || !I.intacc) return toast('Heads "Interest on Fixed Deposits" / "Interest Accrued on FD" are missing', 'err');
+  if (FDW.rows.some(r => r.kind === 'pay' && !r.inBooks && fdwNum(r.paid)) && !FDW.payBank) return toast('Choose the bank account where payout interest was credited', 'warn');
+  const bfBooks = r2(ENG.headOB(S, I.intacc, I)); const bfRows = r2(sum(FDW.rows, r => fdwNum(r.accb)));
+  const show = bf => { const E = fdwEntries(bf); const nm = h => (h === '__TDS__' ? 'TDS Receivable (will be created)' : H(h).name);
+    return E.map(e => { const ex = fdwVch(e.k); return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden"><label class="row" style="background:var(--soft);padding:6px 10px;margin:0"><input type="checkbox" class="fp-k" value="${e.k}" checked> <b>${FDW_K[e.k]}</b> <span class="small muted">· ${fd(e.d)}${ex ? ` · will update ${esc(ex[1].no)}` : ''}</span></label><table>${e.lines.map(l => `<tr><td style="${l.cr ? 'padding-left:28px' : ''}">${l.cr ? 'To ' : ''}${esc(nm(l.h))}${l.dr ? ' <span class="small muted">Dr</span>' : ''}</td><td class="n">${l.dr ? fmt(l.dr) : ''}</td><td class="n">${l.cr ? fmt(l.cr) : ''}</td></tr>`).join('')}<tr><td colspan="3" class="small muted">(${esc(e.nar)})</td></tr></table></div>`; }).join('') + `<div class="alert a-info small">Interest on Fixed Deposits for the year after these entries: <b>₹${fmt(r2(sum(FDW.rows, r => fdwCalc(r).paid + fdwCalc(r).acc) - bf))}</b> (paid / credited + accrued now − accrued b/f reversed).</div>` || '<div class="empty">Nothing to post — enter the bank figures first.</div>'; };
+  const C = FDW.rows.map(fdwCalc); const inc = r2(sum(C, c => c.income));
+  openModal({ title: `✓ FD interest entries — FY ${S.fy.label}`, wide: true, ok: 'Post selected entries', body: `<div data-form><div class="fr c2"><div><label>Accrued interest b/f to reverse (Interest Accrued on FD opening balance)</label><input id="fp-bf" class="num" type="number" step="0.01" value="${bfBooks}" oninput="$('fp-prev').innerHTML=FDW_SHOW(nval('fp-bf'))"></div><div class="small muted" style="align-self:end">As per books ₹${fmt(bfBooks)} · as per working ₹${fmt(bfRows)}${Math.abs(bfBooks - bfRows) > 0.5 ? ' <span class="dr">— differ, check</span>' : ''}</div></div></div>
+    <div id="fp-prev">${show(bfBooks)}</div><div class="small muted">${FDW.rows.some(r => r.kind === 'pay' && r.inBooks) ? 'Payout FDs marked "already in bank book": the net interest is assumed to be credited to Interest on Fixed Deposits already, so only the TDS is added. ' : ''}Posting again later updates these same entries — nothing is duplicated.</div>`,
+    onOpen: () => { window.FDW_SHOW = show; },
+    onOk: async () => { guardEdit(); const want = new Set($$('.fp-k').filter(c => c.checked).map(c => c.value)); const E = fdwEntries(r2(nval('fp-bf'))).filter(e => want.has(e.k)); if (!E.length) throw new Error('Nothing selected');
+      let tdsH = fdwTdsHead(); if (E.some(e => e.lines.some(l => l.h === '__TDS__'))) { const k = FBX.key('x'); await commit({ [`heads/${k}`]: headRec(['A031', 'Assets', 'Current Assets', 'TDS Receivable', 'gen', '']) }, { a: 'create', e: 'head', s: 'TDS Receivable (for FD interest)' }); tdsH = k; }
+      if (FDW.dirty) await fdwSave(true); const done = [];
+      for (const e of E) { const lines = e.lines.map(l => ({ ...l, h: l.h === '__TDS__' ? tdsH : l.h })); const ex = fdwVch(e.k);
+        const r = await saveVoucher({ t: 'J', d: e.d, nar: e.nar, fdw: S.fyId + ':' + e.k, lines }, ex ? { editId: ex[0], stampWas: ex[1].ua } : {}); if (r) done.push(r.rec.no); }
+      toast(`Posted ${done.join(', ')}`, 'ok', 6000); fdwPostedList(); } });
+}
+function fdwPostedList() { const el = $('fdw-posted'); if (!el) return; const L = Object.entries(S.vch).filter(([, v]) => v && String(v.fdw || '').startsWith(S.fyId + ':')).sort((a, b) => a[1].d.localeCompare(b[1].d));
+  el.innerHTML = L.length ? `<div class="tw"><table><thead><tr><th>Date</th><th>No.</th><th>Entry</th><th class="n">Amount</th><th></th></tr></thead><tbody>${L.map(([id, v]) => `<tr><td>${fd(v.d)}</td><td class="mono small">${esc(v.no)}</td><td>${esc(FDW_K[v.fdw.split(':')[1]] || '')}<div class="small muted">${esc(v.nar || '')}</div></td><td class="n">${fmt(vAmount(v))}</td><td><button class="xs ghost" onclick="printVoucher('${id}')">🖨</button>${canEdit() ? ` <button class="xs ghost" onclick="deleteVoucher('${id}').catch(e=>toast(e.message,'err'))">🗑</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : '<div class="small muted">No entries posted yet for this year.</div>'; }
+
+// ── Print & Excel ────────────────────────────────────────────────────────
+function fdwTable() { const C = FDW.rows.map(r => ({ r, c: fdwCalc(r) }));
+  const head = ['Sr.', 'Bank', 'FD No.', 'Type', 'Start', 'Maturity', 'Rate %', 'Principal ₹', 'Interest paid / credited ₹', 'TDS ₹', `Accrued on ${fd(S.fy.end)} ₹`, 'Accrued b/f ₹', 'Income for the year ₹', 'Closing FD balance ₹'];
+  const rows = C.map(({ r, c }, i) => [i + 1, r.bank || '', r.no || '', r.kind === 'pay' ? 'Payout' : 'Cumulative', fd(r.start), fd(r.mat), +r.rate || '', c.princ, c.paid, c.tds, c.acc, c.accb, c.income, c.closing]);
+  const tot = ['', '', `Total (${C.length} FDs)`, '', '', '', '', ...[c => c.princ, c => c.paid, c => c.tds, c => c.acc, c => c.accb, c => c.income, c => c.closing].map(f => r2(sum(C, x => f(x.c))))];
+  return { head, rows, tot, C }; }
+function fdwPrint() { const { head, rows, tot } = fdwTable(); const n = i => i >= 6;
+  printDoc('FD Working', `<style>@page{size:A4 landscape}.doc{max-width:277mm}</style><div class="doc">${letterhead(true)}<h2 class="tt">FD WORKING — INTEREST ON FIXED DEPOSITS</h2><div class="center small muted" style="margin:-4px 0 8px">FY ${esc(S.fy.label)} · as per bank interest / accrued-interest statements</div>
+  <table><thead><tr>${head.map((h, i) => `<th class="${n(i) ? 'n' : ''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td class="${n(i) ? 'n' : ''}">${typeof c === 'number' && i > 6 ? fmt(c) : esc(c)}</td>`).join('')}</tr>`).join('')}<tr class="tot">${tot.map((c, i) => `<td class="${n(i) ? 'n' : ''}">${typeof c === 'number' ? fmt(c) : esc(c)}</td>`).join('')}</tr></tbody></table>
+  <p class="small" style="margin-top:8px">Income for the year = interest paid / credited + interest accrued on ${fd(S.fy.end)} − interest accrued b/f on ${fd(S.fy.start)}.</p>${signBlock(designations())}</div>`, { auto: false }); }
+function fdwExcel() { const { head, rows, tot } = fdwTable(); xlsx('FD_Working_' + S.fy.label, [{ name: 'FD Working', title: `FD working — interest on fixed deposits — FY ${S.fy.label}`, rows: [head, ...rows, tot], cols: [5, 16, 16, 11, 11, 11, 8, 14, 16, 11, 15, 13, 15, 15] }]); }
 
 // ═══════════════════════════════════════════════════════════════════════
 // COMPLETE BOOKS OF ACCOUNTS — one click: PDF (title, index with page numbers) + Excel
