@@ -729,7 +729,7 @@ const $ = id => document.getElementById(id);
 const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const jsq = s => String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
-const numv = v => { const n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(n) ? n : 0; };
+const numv = v => { if (typeof v === 'number') return isFinite(v) ? v : 0; let s = String(v == null ? '' : v).trim(); const neg = /^\(.*\)$/.test(s); s = s.replace(/[^0-9.\-]/g, ''); const n = parseFloat(s); return isFinite(n) ? (neg ? -Math.abs(n) : n) : 0; }; // accepts ₹, commas, Rs., (negative)
 const val = id => { const e = $(id); return e ? String(e.value).trim() : ''; };
 const nval = id => numv(val(id));
 const fmt = (n, d = 2) => { n = +n || 0; const s = Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }); return (n < -0.0049 ? '-' : '') + s; };
@@ -1069,8 +1069,8 @@ function boot() {
 // PRINT · EXCEL EXPORT · FILE IMPORT helpers
 // ═══════════════════════════════════════════════════════════════════════
 const LBL = {
-  en: { bill: 'MAINTENANCE BILL', suppbill: 'SUPPLEMENTARY BILL', billNo: 'Bill No.', billDate: 'Bill Date', due: 'Due Date', period: 'Period', member: 'Member', flat: 'Flat / Unit', area: 'Area', particulars: 'Particulars', amount: 'Amount (₹)', arrears: 'Previous balance (arrears)', arrP: 'Principal arrears', arrI: 'Interest arrears', interest: 'Interest on arrears', current: 'Current charges', total: 'TOTAL AMOUNT PAYABLE', advance: 'Advance', words: 'In words', receipt: 'RECEIPT', rcptNo: 'Receipt No.', date: 'Date', recvFrom: 'Received with thanks from', sumOf: 'the sum of', by: 'by', towards: 'towards', chq: 'Cheque / Ref', subj: 'Subject to realisation of cheque.', receiptsPrev: 'Receipts during previous period', for: 'For', regNo: 'Reg. No.', pay: 'Pay by UPI', bank: 'Bank details for NEFT/RTGS', notes: 'Notes', gst: 'GST', cgst: 'CGST', sgst: 'SGST', nil: 'Nil', paid: 'Paid', mode: 'Mode', obArr: 'Opening arrears', part: 'part', supp: 'Supp.', other: 'Other dues', towardsP: 'Towards maintenance for', mtce: 'towards maintenance for', rcptHead: 'RECEIPT', rcptLine: 'Received with thanks from', followingPay: 'the following payment(s)', totalRcvd: 'Total received', noRcpt: 'No payment received since the previous bill.' },
-  mr: { bill: 'देखभाल शुल्क बिल', suppbill: 'पुरवणी बिल', billNo: 'बिल क्र.', billDate: 'बिल दिनांक', due: 'देय दिनांक', period: 'कालावधी', member: 'सभासद', flat: 'सदनिका क्र.', area: 'क्षेत्रफळ', particulars: 'तपशील', amount: 'रक्कम (₹)', arrears: 'मागील थकबाकी', arrP: 'मुद्दल थकबाकी', arrI: 'व्याज थकबाकी', interest: 'थकबाकीवरील व्याज', current: 'चालू शुल्क', total: 'एकूण देय रक्कम', advance: 'आगाऊ', words: 'अक्षरी', receipt: 'पावती', rcptNo: 'पावती क्र.', date: 'दिनांक', recvFrom: 'यांच्याकडून आभारपूर्वक मिळाले', sumOf: 'रक्कम', by: 'द्वारे', towards: 'करिता', chq: 'धनादेश / संदर्भ', subj: 'धनादेश वटल्यानंतरच ग्राह्य.', receiptsPrev: 'मागील कालावधीतील पावत्या', for: 'करिता', regNo: 'नोंदणी क्र.', pay: 'UPI द्वारे भरणा', bank: 'NEFT/RTGS साठी बँक तपशील', notes: 'सूचना', gst: 'जीएसटी', cgst: 'सीजीएसटी', sgst: 'एसजीएसटी', nil: 'निरंक', paid: 'भरले', mode: 'पद्धत' , obArr: 'मागील थकबाकी', part: 'अंशतः', supp: 'पुरवणी', other: 'इतर देणी', towardsP: 'देखभाल शुल्क कालावधी', mtce: 'देखभाल शुल्क करिता', rcptHead: 'पावती', rcptLine: 'यांच्याकडून आभारपूर्वक मिळाले', followingPay: 'खालील रक्कम', totalRcvd: 'एकूण जमा', noRcpt: 'मागील बिलानंतर कोणतीही रक्कम जमा झालेली नाही.'},
+  en: { srno: 'Sr.', bill: 'MAINTENANCE BILL', suppbill: 'SUPPLEMENTARY BILL', billNo: 'Bill No.', billDate: 'Bill Date', due: 'Due Date', period: 'Period', member: 'Member', flat: 'Flat / Unit', area: 'Area', particulars: 'Particulars', amount: 'Amount (₹)', arrears: 'Previous balance (arrears)', arrP: 'Principal arrears', arrI: 'Interest arrears', interest: 'Interest on arrears', current: 'Current charges', total: 'TOTAL AMOUNT PAYABLE', advance: 'Advance', words: 'In words', receipt: 'RECEIPT', rcptNo: 'Receipt No.', date: 'Date', recvFrom: 'Received with thanks from', sumOf: 'the sum of', by: 'by', towards: 'towards', chq: 'Cheque / Ref', subj: 'Subject to realisation of cheque.', receiptsPrev: 'Receipts during previous period', for: 'For', regNo: 'Reg. No.', pay: 'Pay by UPI', bank: 'Bank details for NEFT/RTGS', notes: 'Notes', gst: 'GST', cgst: 'CGST', sgst: 'SGST', nil: 'Nil', paid: 'Paid', mode: 'Mode', obArr: 'Opening arrears', part: 'part', supp: 'Supp.', other: 'Other dues', towardsP: 'Towards maintenance for', mtce: 'towards maintenance for', rcptHead: 'RECEIPT', rcptLine: 'Received with thanks from', followingPay: 'the following payment(s)', totalRcvd: 'Total received', noRcpt: 'No payment received since the previous bill.' },
+  mr: { srno: 'अ.क्र.', bill: 'देखभाल शुल्क बिल', suppbill: 'पुरवणी बिल', billNo: 'बिल क्र.', billDate: 'बिल दिनांक', due: 'देय दिनांक', period: 'कालावधी', member: 'सभासद', flat: 'सदनिका क्र.', area: 'क्षेत्रफळ', particulars: 'तपशील', amount: 'रक्कम (₹)', arrears: 'मागील थकबाकी', arrP: 'मुद्दल थकबाकी', arrI: 'व्याज थकबाकी', interest: 'थकबाकीवरील व्याज', current: 'चालू शुल्क', total: 'एकूण देय रक्कम', advance: 'आगाऊ', words: 'अक्षरी', receipt: 'पावती', rcptNo: 'पावती क्र.', date: 'दिनांक', recvFrom: 'यांच्याकडून आभारपूर्वक मिळाले', sumOf: 'रक्कम', by: 'द्वारे', towards: 'करिता', chq: 'धनादेश / संदर्भ', subj: 'धनादेश वटल्यानंतरच ग्राह्य.', receiptsPrev: 'मागील कालावधीतील पावत्या', for: 'करिता', regNo: 'नोंदणी क्र.', pay: 'UPI द्वारे भरणा', bank: 'NEFT/RTGS साठी बँक तपशील', notes: 'सूचना', gst: 'जीएसटी', cgst: 'सीजीएसटी', sgst: 'एसजीएसटी', nil: 'निरंक', paid: 'भरले', mode: 'पद्धत' , obArr: 'मागील थकबाकी', part: 'अंशतः', supp: 'पुरवणी', other: 'इतर देणी', towardsP: 'देखभाल शुल्क कालावधी', mtce: 'देखभाल शुल्क करिता', rcptHead: 'पावती', rcptLine: 'यांच्याकडून आभारपूर्वक मिळाले', followingPay: 'खालील रक्कम', totalRcvd: 'एकूण जमा', noRcpt: 'मागील बिलानंतर कोणतीही रक्कम जमा झालेली नाही.'},
 };
 const lang = () => SET().bill.lang === 'mr' ? 'mr' : 'en';
 const T = k => LBL[lang()][k] || LBL.en[k] || k;
@@ -1117,11 +1117,19 @@ function voucherDocHtml(vid) {
   const v = S.vch[vid]; if (!v) return '';
   const ls = vLines(v); const I = IDS();
   if (v.t === 'R') {
-    const ml = ls.find(l => l.cr); const who = ml.m ? M(ml.m) : null; const amt = vAmount(v);
+    const ml = ls.find(l => l.cr); const who = ml.m ? M(ml.m) : null; const amt = vAmount(v); const tpl = SET().tpl.rcpt || 'classic';
+    const al = who ? (ENG.receiptAlloc(S, ml.m, { lines: L_() })[vid] || []) : [];
+    const towards = who ? `${allocText(al, ls.filter(l => l.m).length === 1 && al.length > 1) || esc(v.nar || 'maintenance dues')}` : esc(v.nar || H(ml.h).name);
+    const chq = (v.chq || {}).no ? `${lang() === 'mr' ? 'क्र.' : 'No.'} <b>${esc(v.chq.no)}</b>${v.chq.d ? ' dt. ' + fd(v.chq.d) : ''}${v.chq.bank ? ' ' + esc(v.chq.bank) : ''}` : '';
+    const subj = v.mode && /cheque|dd|demand/i.test(v.mode) ? `<p class="small muted">${T('subj')}</p>` : '';
+    const body = `<p style="font-size:12.5px;line-height:2">${T('recvFrom')} <b>${esc(who ? who.name : H(ml.h).name)}</b>${who ? ` (${T('flat')} <b>${esc(pn(flatLbl(who)))}</b>)` : ''} ${T('sumOf')} <b>₹ ${pn(fmt(amt))}</b> (${esc(amtWords(amt))}) ${T('by')} <b>${esc(v.mode || 'Cash')}</b> ${chq} ${who ? `${T('mtce')} <b>${towards}</b>${v.nar ? ' (' + esc(v.nar) + ')' : ''}` : `${T('towards')} ${towards}`}.</p>`;
+    if (tpl === 'boxed') return `${TPL_CSS()}<div class="doc nb rc-boxed"><div class="cf"><b>${T('receipt')}</b><br>${T('rcptNo')}: <b>${esc(pn(v.no))}</b><br>${T('date')}: ${pn(fd(v.d))}<br>${T('flat')}: <b>${who ? esc(pn(flatLbl(who))) : ''}</b><br>${esc(who ? who.name : H(ml.h).name)}<br>₹ <b>${pn(fmt(amt))}</b><br>${esc(v.mode || 'Cash')} ${esc((v.chq || {}).no || '')}<br><span class="muted">(Office copy)</span></div>
+      <div class="mn">${letterhead(true)}<h2 class="tt">${T('receipt')}</h2><div class="meta"><div>${T('rcptNo')}: <b>${esc(pn(v.no))}</b></div><div>${T('date')}: <b>${pn(fd(v.d))}</b></div></div>${body}<div style="display:flex;justify-content:space-between;align-items:flex-end"><div style="border:1.5px solid #333;padding:5px 12px;font-size:15px;font-weight:800">₹ ${pn(fmt(amt))}</div><div style="flex:1">${billSign('receipt', 30)}</div></div>${subj}</div></div>`;
+    if (tpl === 'modern') { const s = S.meta; const logo = SET().bill.logo;
+      return `${TPL_CSS()}<div class="doc nb rc-modern"><div class="band"><div style="display:flex;gap:10px;align-items:center">${logo ? `<img src="${logo}" style="max-height:44px;background:#fff;border-radius:4px;padding:2px">` : ''}<div><div style="font-size:16px;font-weight:800">${esc(socName())}</div><div class="small" style="opacity:.9">${esc([s.regNo && T('regNo') + ' ' + s.regNo, [s.address, s.city].filter(Boolean).join(', ')].filter(Boolean).join(' · '))}</div></div></div><b style="letter-spacing:2px">${T('receipt')}</b></div>
+      <div class="bd"><div style="display:flex;justify-content:space-between" class="small"><span>${T('rcptNo')}: <b>${esc(pn(v.no))}</b></span><span>${T('date')}: <b>${pn(fd(v.d))}</b></span></div>${body}<div style="display:flex;justify-content:space-between;align-items:flex-end"><span class="amt">₹ ${pn(fmt(amt))}</span><div style="flex:1">${billSign('receipt', 30)}</div></div>${subj}</div></div>`; }
     return `<div class="doc nb" style="border:1px solid #999;padding:10px 12px">${letterhead(true)}<h2 class="tt">${T('receipt')}</h2>
-    <div class="meta"><div>${T('rcptNo')}: <b>${esc(pn(v.no))}</b></div><div>${T('date')}: <b>${pn(fd(v.d))}</b></div></div>
-    <p style="font-size:12.5px;line-height:2">${T('recvFrom')} <b>${esc(who ? who.name : H(ml.h).name)}</b>${who ? ` (${T('flat')} <b>${esc(pn(flatLbl(who)))}</b>)` : ''} ${T('sumOf')} <b>₹ ${pn(fmt(amt))}</b> (${esc(amtWords(amt))}) ${T('by')} <b>${esc(v.mode || 'Cash')}</b>${(v.chq || {}).no ? ` ${T('chq')}: <b>${esc(v.chq.no)}</b>${v.chq.d ? ' dt. ' + fd(v.chq.d) : ''}${v.chq.bank ? ' ' + esc(v.chq.bank) : ''}` : ''} ${who ? `${T('mtce')} <b>${allocText((ENG.receiptAlloc(S, ml.m, { lines: L_() })[vid]) || [], ls.filter(l => l.m).length === 1 && (ENG.receiptAlloc(S, ml.m, { lines: L_() })[vid] || []).length > 1) || esc(v.nar || 'maintenance dues')}</b>${v.nar ? ' (' + esc(v.nar) + ')' : ''}` : `${T('towards')} ${esc(v.nar || H(ml.h).name)}`}.</p>
-    ${v.mode && v.mode !== 'Cash' && /cheque|dd|demand/i.test(v.mode) ? `<p class="small muted">${T('subj')}</p>` : ''}${billSign('receipt', 34)}</div>`;
+    <div class="meta"><div>${T('rcptNo')}: <b>${esc(pn(v.no))}</b></div><div>${T('date')}: <b>${pn(fd(v.d))}</b></div></div>${body}${subj}${billSign('receipt', 34)}</div>`;
   }
   const rows = ls.map(l => `<tr><td>${l.m ? esc(memLbl(M(l.m))) : esc(H(l.h).name)}</td><td class="n">${l.dr ? fmt(l.dr) : ''}</td><td class="n">${l.cr ? fmt(l.cr) : ''}</td></tr>`).join('');
   return `<div class="doc nb" style="border:1px solid #999;padding:10px 12px">${letterhead(true)}<h2 class="tt">${TNAME[v.t].toUpperCase()} VOUCHER</h2>
@@ -1161,7 +1169,7 @@ function xlsxT(filename, title, leftTitle, rightTitle, left, right, pv) {
 function pickFile(accept, cb) { const i = document.createElement('input'); i.type = 'file'; i.accept = accept; i.onchange = () => i.files[0] && cb(i.files[0]); i.click(); }
 async function readSheet(file, { raw = false, header } = {}) {
   if (typeof XLSX === 'undefined') throw new Error('Excel library not loaded');
-  const buf = await file.arrayBuffer(); const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+  const buf = await file.arrayBuffer(); const csv = /\.csv$/i.test(file.name || ''); const wb = XLSX.read(buf, { type: 'array', cellDates: true, raw: csv });
   const ws = wb.Sheets[wb.SheetNames[0]];
   return XLSX.utils.sheet_to_json(ws, { defval: '', raw, header });
 }
@@ -1292,9 +1300,10 @@ function defaultSettings() {
     bounce: { charge: 500 },
     tds: { sections: [{ c: '194C', d: 'Contractor – Individual/HUF', r: 1 }, { c: '194C', d: 'Contractor – Others', r: 2 }, { c: '194J', d: 'Professional fees', r: 10 }, { c: '194J', d: 'Technical services', r: 2 }, { c: '194I', d: 'Rent – Land/Building', r: 10 }, { c: '194I', d: 'Rent – Plant & Machinery', r: 2 }, { c: '194H', d: 'Commission / Brokerage', r: 2 }] },
     letter: { chair: '', sec: '', treas: '' },
+    tpl: { bill: 'classic', rcpt: 'classic', fs: 't', os: 'ageing', reuse: true, manual: true },
   };
 }
-const SET = () => { const d = defaultSettings(); const s = S.meta.settings || {}; return { billing: { ...d.billing, ...(s.billing || {}), gst: { ...d.billing.gst, ...((s.billing || {}).gst || {}) } }, bill: { ...d.bill, ...(s.bill || {}) }, bounce: { ...d.bounce, ...(s.bounce || {}) }, tds: { ...d.tds, ...(s.tds || {}) }, letter: { ...d.letter, ...(s.letter || {}) } }; };
+const SET = () => { const d = defaultSettings(); const s = S.meta.settings || {}; return { billing: { ...d.billing, ...(s.billing || {}), gst: { ...d.billing.gst, ...((s.billing || {}).gst || {}) } }, bill: { ...d.bill, ...(s.bill || {}) }, bounce: { ...d.bounce, ...(s.bounce || {}) }, tds: { ...d.tds, ...(s.tds || {}) }, letter: { ...d.letter, ...(s.letter || {}) }, tpl: { ...d.tpl, ...(s.tpl || {}) } }; };
 const fyIdFor = start => 'fy' + start.slice(0, 4);
 const fyLabelFor = start => { const y = +start.slice(0, 4); return y + '-' + String(y + 1).slice(2); };
 const defaultFYStart = () => { const d = new Date(); const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; return y + '-04-01'; };
@@ -1630,7 +1639,7 @@ const vAmount = v => (v.t === 'J' ? sum(vLines(v), l => l.dr) : sum(vLines(v).fi
 const vMembers = v => vLines(v).filter(l => l.m).map(l => l.m);
 
 // Save (create or update) a voucher atomically, then cascade interest for affected members
-async function saveVoucher(v, { editId, stampWas } = {}) {
+async function saveVoucher(v, { editId, stampWas, no } = {}) {
   guardEdit(); guardDate(v.d, 'voucher');
   const lines = vLines(v).map(l => ({ ...l, dr: r2(l.dr), cr: r2(l.cr) })).filter(l => l.h && (l.dr || l.cr));
   if (lines.length < 2) throw new Error('A voucher needs at least two lines.');
@@ -1642,25 +1651,49 @@ async function saveVoucher(v, { editId, stampWas } = {}) {
   if (editId) { if (!old) throw new Error('This voucher no longer exists (deleted by someone else?).'); guardDate(old.d, 'voucher'); if (!(await checkConflict(old, stampWas, 'voucher'))) return null; }
   const rec = { ...v, lines, ...stamp() };
   Object.keys(rec).forEach(k => (rec[k] === undefined || rec[k] === '') && delete rec[k]);
-  let vid = editId;
+  let vid = editId; delete rec.manualNo;
+  const cb0 = lines.find(l => isCB(l.h)); const series0 = old ? old.series : seriesFor(v.t, cb0 ? cb0.h : null);
+  const want = no && String(no).trim() ? manualNo(series0, no, editId) : null; // admin typed a number
   if (!editId) {
-    const cb = lines.find(l => isCB(l.h)); const series = seriesFor(v.t, cb ? cb.h : null);
-    rec.no = fmtNo(series, await reserveNo(series)); rec.series = series; rec.at = Date.now(); rec.by = uname();
+    const series = series0;
+    if (want) { rec.no = want.no; await bumpCounter(series, want.n); } else rec.no = fmtNo(series, await reserveNo(series));
+    rec.series = series; rec.at = Date.now(); rec.by = uname();
     vid = FBX.key(sp('vch/' + S.fyId));
-  } else { rec.no = old.no; rec.series = old.series; rec.at = old.at; rec.by = old.by; if (old.bnc) rec.bnc = old.bnc; if (old.rev) rec.rev = old.rev; if (old.clr) rec.clr = old.clr; }
+  } else { rec.no = want ? want.no : old.no; rec.series = old.series; rec.at = old.at; rec.by = old.by; if (old.bnc) rec.bnc = old.bnc; if (old.rev) rec.rev = old.rev; if (old.clr) rec.clr = old.clr; if (want) await bumpCounter(old.series, want.n); }
   await commit({ [`vch/${S.fyId}/${vid}`]: rec }, { a: editId ? 'edit' : 'create', e: TNAME[v.t] || 'voucher', id: rec.no, s: `${rec.no} ${fd(rec.d)} ₹${fmt(vAmount(rec))} ${vParticulars(rec)}`.slice(0, 280) });
   await recalcMembers([...vMembers(rec), ...(old ? vMembers(old) : [])]);
   pushSummary();
   return { vid, rec };
 }
+// ── Voucher numbering: typed numbers (admin) and re-use of the last number ──
+const canTypeNo = () => isAdmin() && SET().tpl.manual !== false;
+function manualNo(series, typed, exceptId) {
+  if (!canTypeNo()) throw new Error('Only an admin can type a voucher number.');
+  const t = String(typed).trim().toUpperCase().replace(/\s+/g, ''); const m = t.match(/^(?:([A-Z]+)-?)?0*(\d{1,6})$/);
+  if (!m) throw new Error(`Voucher number "${typed}" is not valid. Type just the number (e.g. 45) or ${series}-0045.`);
+  if (m[1] && m[1] !== series) throw new Error(`This entry belongs to the ${series} series — use ${series}-${String(m[2]).padStart(4, '0')} (not ${m[1]}).`);
+  const n = +m[2]; if (!n) throw new Error('Voucher number must be 1 or more.'); const no = fmtNo(series, n);
+  const clash = Object.entries(S.vch).find(([id, x]) => x && x.no === no && id !== exceptId); if (clash) throw new Error(`${no} is already used (${fd(clash[1].d)} · ${vParticulars(clash[1])}).`);
+  return { no, n };
+}
+async function bumpCounter(series, n) { await FBX.txn(sp(`counters/${S.fyId}/${series}`), cur => Math.max(+cur || 0, n)); }
+const vNum = v => { const m = String(v.no || '').match(/-(\d+)$/); return m ? +m[1] : 0; };
+// After a delete: if it was the latest number of its series, the next entry gets that number again
+async function reuseIfLast(v) {
+  if (SET().tpl.reuse === false || !v.series) return false; const n = vNum(v); if (!n) return false;
+  const r = await FBX.txn(sp(`counters/${S.fyId}/${v.series}`), cur => (+cur === n ? n - 1 : undefined)); return !!r.committed;
+}
+const isLastNo = v => { const n = vNum(v); return !!n && !Object.values(S.vch).some(x => x && x !== v && x.series === v.series && vNum(x) > n); };
 async function deleteVoucher(vid) {
   guardEdit(); const v = S.vch[vid]; if (!v) return;
   guardDate(v.d, 'voucher');
   if (v.bnc) throw new Error('This cheque is marked bounced. Use "Undo bounce" first.');
   if (v.rev) throw new Error('This is a cheque-bounce reversal. Use "Undo bounce" on the original receipt instead.');
-  if (!(await confirmBox(`Delete ${v.no} dated ${fd(v.d)} for ₹${fmt(vAmount(v))}?\n\nThe number will not be reused.`, { danger: true, ok: 'Delete' }))) return;
+  const last = SET().tpl.reuse !== false && isLastNo(v);
+  if (!(await confirmBox(`Delete ${v.no} dated ${fd(v.d)} for ₹${fmt(vAmount(v))}?\n\n${last ? `${v.no} is the latest number, so the next ${TNAME[v.t].toLowerCase()} will get ${v.no} again.` : `${v.no} is not the latest number, so it will stay as a gap${canTypeNo() ? ' (an admin can type this number on another entry to fill it)' : ''}.`}`, { danger: true, ok: 'Delete' }))) return;
   await commit({ [`vch/${S.fyId}/${vid}`]: null }, { a: 'delete', e: TNAME[v.t] || 'voucher', id: v.no, s: `${v.no} ${fd(v.d)} ₹${fmt(vAmount(v))} ${vParticulars(v)}` });
-  await recalcMembers(vMembers(v)); pushSummary(); toast('Deleted ' + v.no);
+  const re = last ? await reuseIfLast(v).catch(() => false) : false;
+  await recalcMembers(vMembers(v)); pushSummary(); toast('Deleted ' + v.no + (re ? ' — the number will be used for the next entry' : ''));
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────
@@ -1737,6 +1770,7 @@ function voucherPage(t) {
         '', `<div class="split"><div class="card" id="vf" data-form>
         <div class="fr c2"><div><label>Date *</label><input type="date" id="vf-d" value="${edit ? edit.d : (LS.get('sb_lastd_' + S.sid, '') && LS.get('sb_lastd_' + S.sid, '') >= S.fy.start && LS.get('sb_lastd_' + S.sid, '') <= S.fy.end ? LS.get('sb_lastd_' + S.sid, '') : (today() > S.fy.end ? S.fy.end : today()))}" min="${S.fy.start}" max="${S.fy.end}"></div>
         <div><label>${lbl[0]} *</label>${accPicker('vf-cb', cbOptions(), { value: cb, ph: 'Cash / Bank' })}</div></div>
+        ${canTypeNo() ? `<div class="fr c2"><div><label>${t === 'R' ? 'Receipt' : 'Voucher'} No.</label><input id="vf-no" value="${esc(edit ? edit.no : '')}" placeholder="automatic" title="Leave blank for the next number. Admins can type a number to fill a gap."></div><div></div></div>` : ''}
         <div class="fr"><div><div class="row" style="justify-content:space-between;margin-bottom:4px"><label style="margin:0">${lbl[1]} *</label>${t !== 'C' ? `<button class="xs ghost" id="vf-memtg" onclick="VF.memOnly=!VF.memOnly;vfRebuildAcc('${t}')">${VF.memOnly ? '📋 All accounts' : '👥 Members only'}</button>` : ''}</div>
         <div id="vf-accw">${accPicker('vf-acc', entryOpts(t), { value: acc, ph: t === 'C' ? 'Cash / Bank' : 'Account or member (type flat no. or name)', onchange: 'vfAccChanged' })}</div><div id="vf-info" class="small" style="margin-top:6px"></div></div></div>
         <div class="fr c2"><div><label>Amount ₹ *</label><input id="vf-amt" class="num" type="number" step="0.01" value="${amt || ''}" oninput="vfTds()"></div><div><label>Mode</label><select id="vf-mode">${MODES.map(m => `<option ${((edit && edit.mode) || (t === 'C' ? 'Cash' : '')) === m ? 'selected' : ''}>${m}</option>`).join('')}</select></div></div>
@@ -1744,12 +1778,13 @@ function voucherPage(t) {
         ${t === 'P' ? `<div style="border:1px dashed var(--border2);border-radius:8px;padding:10px;margin-bottom:10px"><label class="row" style="margin:0"><input type="checkbox" id="vf-tdson" ${tdsOn ? 'checked' : ''} onchange="$('vf-tdsb').style.display=this.checked?'':'none';vfTds()"> Deduct TDS</label>
           <div id="vf-tdsb" style="${tdsOn ? '' : 'display:none'};margin-top:8px"><div class="fr c2"><div><label>Section</label><select id="vf-tdss" onchange="vfTds(true)">${secs.map((s, i) => `<option value="${i}" ${tds.c === s.c && tds.desc === s.d ? 'selected' : ''}>${esc(s.c)} – ${esc(s.d)} (${s.r}%)</option>`).join('')}</select></div><div><label>TDS amount</label><input id="vf-tdsa" class="num" type="number" step="1" value="${tds.amt || ''}" oninput="vfTds()"></div></div>
           <div class="fr c2"><div><label>Party name</label><input id="vf-party" value="${esc(tds.party || '')}"></div><div><label>Party PAN</label><input id="vf-pan" value="${esc(tds.pan || '')}" style="text-transform:uppercase"></div></div><div class="small" id="vf-net"></div></div></div>` : ''}
-        <div class="fr"><div><label>Narration</label><input id="vf-nar" value="${esc((edit && edit.nar) || '')}" placeholder="${t === 'R' ? 'Maintenance received' : t === 'P' ? 'e.g. Electricity bill for May' : 'Cash deposited'}"></div></div>
+        <div id="vf-sugg" style="margin:-4px 0 8px"></div><datalist id="vf-narl"></datalist>
+        <div class="fr"><div><label>Narration</label><input id="vf-nar" list="vf-narl" autocomplete="off" value="${esc((edit && edit.nar) || '')}" placeholder="${t === 'R' ? 'Maintenance received' : t === 'P' ? 'e.g. Electricity bill for May' : 'Cash deposited'}"></div></div>
         <div id="vf-msg"></div>
         ${canEdit() ? `<div class="row"><button onclick="vfSave('${t}')">💾 ${edit ? 'Update' : 'Save'}</button><button class="ghost" onclick="vfSave('${t}',true)">Save & Print</button>${edit ? '' : '<button class="ghost" onclick="go(CUR.id)">Clear</button>'}<span class="small muted">Ctrl+Enter to save</span></div>` : '<div class="alert a-info">View-only access</div>'}
         </div><div id="vf-reg"></div></div>`);
       $('vf').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); vfSave(t); } });
-      VF.t = t; VF.edit = arg && arg.edit; VF.stamp = edit ? edit.ua : null;
+      VF.t = t; VF.edit = arg && arg.edit; VF.stamp = edit ? edit.ua : null; loadPrevFY().then(() => { if (CUR.id === ({ R: 'receipt', P: 'payment', C: 'contra' })[t] && val('vf-acc')) vfNarrSuggest(val('vf-acc')); });
       if (acc) vfAccChanged(acc); this.refresh(); if (t === 'P') vfTds();
     },
     refresh() {
@@ -1773,8 +1808,39 @@ function vRow(id, v, showType) {
 page('receipt', voucherPage('R')); page('payment', voucherPage('P')); page('contra', voucherPage('C'));
 function editVoucher(id) { const v = S.vch[id]; if (!v) return; go({ R: 'receipt', P: 'payment', C: 'contra', J: 'journal' }[v.t], { edit: id }); }
 function vfRebuildAcc(t) { const cur = val('vf-acc'); $('vf-accw').innerHTML = accPicker('vf-acc', entryOpts(t), { value: cur, ph: 'Account or member', onchange: 'vfAccChanged' }); const b = $('vf-memtg'); if (b) b.textContent = VF.memOnly ? '📋 All accounts' : '👥 Members only'; }
+// ── Narration suggestions: what was written for this head in earlier entries ──
+const MONF = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+// Move month names in an old narration forward by the gap between the old entry and the new one ("for Sep-2026" → "for Oct-2026")
+function shiftMonths(text, fromD, toD) {
+  const k = (+toD.slice(0, 4) - +fromD.slice(0, 4)) * 12 + (+toD.slice(5, 7) - +fromD.slice(5, 7)); if (!k) return text;
+  return text.replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)([a-z]*)(\.?[\s\-'’,/]*)(\d{4}|\d{2})?\b/g, (all, m3, rest, sep, yr) => {
+    const full = MONF.find(f => f.startsWith(m3)); if (rest && !(m3 + rest === full || (m3 === 'Sep' && rest === 't'))) return all; if (!yr && !(rest && m3 !== 'May')) return all;
+    const i = MON.indexOf(m3 === 'Sept' ? 'Sep' : m3); let mi = i + k, y = yr ? (+yr < 100 ? 2000 + +yr : +yr) : 0; while (mi > 11) { mi -= 12; y++; } while (mi < 0) { mi += 12; y--; }
+    const name = rest ? MONF[mi] : MON[mi]; return name + (yr ? sep + (yr.length === 2 ? String(y).slice(2) : y) : sep);
+  });
+}
+function narrHistory(t, hid, mid) {
+  const out = []; const seen = new Set(); const I = IDS();
+  const pools = [S.vch, (typeof prevFYReady === 'function' && prevFYReady() && PREVFY.T) ? PREVFY.T.vch : {}];
+  const all = []; pools.forEach(P => Object.values(P || {}).forEach(v => { if (v && v.t === t && v.nar && ENG.vals(v.lines).some(l => l.h === hid && (!mid || l.m === mid) && (t === 'R' ? l.cr : l.dr))) all.push(v); }));
+  all.sort((a, b) => b.d.localeCompare(a.d) || (b.at || 0) - (a.at || 0));
+  for (const v of all) { const key = v.nar.trim().toLowerCase().replace(/\s+/g, ' '); if (seen.has(key)) continue; seen.add(key); out.push(v); if (out.length >= 6) break; }
+  return out;
+}
+function vfNarrSuggest(v) {
+  const box = $('vf-sugg'); if (!box) return; const t = VF.t; if (!v || v.startsWith('M:')) { box.innerHTML = ''; return; }
+  const H_ = narrHistory(t, v); const dl = $('vf-narl');
+  const d = val('vf-d') || today(); const items = H_.map(x => ({ x, txt: shiftMonths(x.nar, x.d, d) }));
+  if (dl) dl.innerHTML = items.map(i => `<option value="${esc(i.txt)}">`).join('');
+  box.innerHTML = items.length ? `<div class="small muted" style="margin:2px 0 4px">Earlier narrations for ${esc(H(v).name)} — click to use:</div><div class="row" style="gap:6px;flex-wrap:wrap">${items.map((i, k) => `<button type="button" class="xs ghost sug" style="text-align:left;white-space:normal;max-width:100%" title="${esc(i.x.no)} · ${fd(i.x.d)} · ₹${fmt(vAmount(i.x))}${i.txt !== i.x.nar ? ' · was: ' + esc(i.x.nar) : ''}" onclick="vfUseNarr(${k})">${esc(i.txt)} <span class="muted">· ₹${fmt0(vAmount(i.x))} · ${fd(i.x.d)}</span></button>`).join('')}</div>` : '';
+  VF.sug = items;
+}
+function vfUseNarr(k) { const i = (VF.sug || [])[k]; if (!i) return; $('vf-nar').value = i.txt; const v = i.x;
+  if (VF.t === 'P' && v.tds && $('vf-tdson')) { if (!$('vf-party').value) $('vf-party').value = v.tds.party || ''; if (!$('vf-pan').value) $('vf-pan').value = v.tds.pan || ''; }
+  if (v.mode && $('vf-mode') && !VF.edit) $('vf-mode').value = v.mode;
+  $('vf-nar').focus(); }
 function vfAccChanged(v) {
-  const info = $('vf-info'); if (!info) return;
+  const info = $('vf-info'); if (!info) return; vfNarrSuggest(v);
   if (!v || !v.startsWith('M:')) { info.innerHTML = ''; return; }
   const mid = v.slice(2), m = M(mid), r = MB()[mid] || { bal: 0, P: 0, I: 0, N: 0 }; const f = FF(mid);
   const unpaid = Object.entries(f.items).filter(([k, x]) => x.bal > 0 && S.bills[k]).map(([k, x]) => `${S.bills[k].no} ₹${fmt0(x.bal)}`);
@@ -1809,11 +1875,11 @@ async function vfSave(t, andPrint) {
       } else v.lines = [{ ...other, dr: amt }, { h: cb, cr: amt }];
     }
     msg.innerHTML = loading('Saving…');
-    const r = await saveVoucher(v, { editId: VF.edit, stampWas: VF.stamp }); if (!r) { msg.innerHTML = ''; return; }
+    const r = await saveVoucher(v, { editId: VF.edit, stampWas: VF.stamp, no: $('vf-no') ? val('vf-no') : '' }); if (!r) { msg.innerHTML = ''; return; }
     LS.set('sb_cb_' + S.sid + t, cb); LS.set('sb_lastd_' + S.sid, d);
     toast(`Saved ${r.rec.no} · ₹${fmt(amt)}`);
     if (andPrint) printVoucher(r.vid);
-    if (VF.edit) go(CUR.id); else { $('vf-amt').value = ''; $('vf-nar').value = ''; ['vf-chq', 'vf-chqd', 'vf-chqb'].forEach(i => $(i).value = ''); apReset('vf-acc', 'Account or member'); $('vf-info').innerHTML = ''; msg.innerHTML = `<div class="alert a-ok">✓ Saved <b>${esc(r.rec.no)}</b></div>`; PAGES[CUR.id].refresh(); setTimeout(() => { const e = $('ap_vf-acc'); if (e) e.querySelector('.ap-d').focus(); }, 50); }
+    if (VF.edit) go(CUR.id); else { if ($('vf-no')) $('vf-no').value = ''; $('vf-amt').value = ''; $('vf-nar').value = ''; ['vf-chq', 'vf-chqd', 'vf-chqb'].forEach(i => $(i).value = ''); apReset('vf-acc', 'Account or member'); $('vf-info').innerHTML = ''; $('vf-sugg').innerHTML = ''; msg.innerHTML = `<div class="alert a-ok">✓ Saved <b>${esc(r.rec.no)}</b></div>`; PAGES[CUR.id].refresh(); setTimeout(() => { const e = $('ap_vf-acc'); if (e) e.querySelector('.ap-d').focus(); }, 50); }
   } catch (e) { msg.innerHTML = `<div class="alert a-err">${esc(e.message)}</div>`; }
 }
 
@@ -1835,7 +1901,7 @@ page('journal', {
   render(arg) {
     const edit = arg && arg.edit ? S.vch[arg.edit] : null; JV.n = 0; JV.edit = arg && arg.edit; JV.stamp = edit ? edit.ua : null;
     shell('🔁 Journal Voucher', edit ? `Editing <b class="mono">${esc(edit.no)}</b> — <a href="#" onclick="go('journal');return false">cancel edit</a>` : 'Adjustments, provisions, interest waivers, transfers to funds',
-      '', `<div class="card" data-form id="jf"><div class="fr c3"><div><label>Date *</label><input type="date" id="jf-d" value="${edit ? edit.d : (today() > S.fy.end ? S.fy.end : today())}" min="${S.fy.start}" max="${S.fy.end}"></div><div><label>Reference</label><input id="jf-ref" value="${esc((edit && edit.ref) || '')}"></div><div><label>Narration *</label><input id="jf-nar" value="${esc((edit && edit.nar) || '')}"></div></div>
+      '', `<div class="card" data-form id="jf"><div class="fr c3"><div><label>Date *</label><input type="date" id="jf-d" value="${edit ? edit.d : (today() > S.fy.end ? S.fy.end : today())}" min="${S.fy.start}" max="${S.fy.end}"></div><div><label>Reference</label><input id="jf-ref" value="${esc((edit && edit.ref) || '')}"></div><div><label>Narration *</label><input id="jf-nar" value="${esc((edit && edit.nar) || '')}"></div></div>${canTypeNo() ? `<div class="fr c3"><div><label>Journal No.</label><input id="jf-no" value="${esc(edit ? edit.no : '')}" placeholder="automatic" title="Leave blank for the next number"></div></div>` : ''}
       <div class="tw" style="overflow:visible"><table class="ent"><thead><tr><th>Account / Member</th><th style="width:140px">Member: apply to</th><th class="n" style="width:150px">Debit ₹</th><th class="n" style="width:150px">Credit ₹</th><th style="width:40px"></th></tr></thead><tbody id="jl-body"></tbody></table></div>
       <div class="row" style="margin:10px 0"><button class="sm ghost" onclick="jvAdd()">+ Line</button><span id="jl-tot" class="small"></span></div>
       <div class="small muted" style="margin-bottom:10px">Tip: to waive a member's interest, Debit <b>Interest on Arrears</b> and Credit the <b>member</b> with "apply to: Interest".</div>
@@ -1858,7 +1924,7 @@ async function jvSave() {
     $$('#jl-body tr').forEach(tr => { const i = tr.id.slice(2); const a = val('jl-a' + i); const dr = nval('jl-dr' + i), cr = nval('jl-cr' + i); if (!a || (!dr && !cr)) return; const l = a.startsWith('M:') ? { h: I.dues, m: a.slice(2), al: val('jl-al' + i) } : { h: a }; if (dr) l.dr = dr; if (cr) l.cr = cr; lines.push(l); });
     if (!val('jf-nar')) throw new Error('Narration is required');
     msg.innerHTML = loading('Posting…');
-    const r = await saveVoucher({ t: 'J', d: val('jf-d'), nar: val('jf-nar'), ref: val('jf-ref'), lines }, { editId: JV.edit, stampWas: JV.stamp });
+    const r = await saveVoucher({ t: 'J', d: val('jf-d'), nar: val('jf-nar'), ref: val('jf-ref'), lines }, { editId: JV.edit, stampWas: JV.stamp, no: $('jf-no') ? val('jf-no') : '' });
     if (!r) { msg.innerHTML = ''; return; }
     toast('Posted ' + r.rec.no); go('journal');
   } catch (e) { msg.innerHTML = `<div class="alert a-err">${esc(e.message)}</div>`; }
@@ -1986,10 +2052,12 @@ page('bulkexp', {
 function bexAdd(n, data) {
   const body = $('bx-body');
   for (let k = 0; k < n; k++) { const i = ++BEX.n; const r = (data || [])[k] || {};
-    body.insertAdjacentHTML('beforeend', `<tr id="bx${i}" data-cd="${esc(r.cd || '')}"><td class="muted small">${i}</td><td><input id="bx-d${i}" type="date" value="${esc(r.d || '')}"></td><td><select id="bx-h${i}" onchange="bexTot()">${expSelOpts(r.h || '')}</select></td><td><select id="bx-c${i}">${cbSelOpts(r.cb || '', '(default)')}</select></td>
-    <td><input id="bx-a${i}" class="num" type="number" step="0.01" value="${r.amt || ''}" oninput="bexTot()"></td><td><select id="bx-m${i}"><option value="">(default)</option>${MODES.map(m => `<option ${r.mode === m ? 'selected' : ''}>${m}</option>`).join('')}</select></td><td><input id="bx-r${i}" value="${esc(r.ref || '')}"></td><td><input id="bx-t${i}" value="${esc(r.nar || '')}" placeholder="e.g. MSEB bill for May"></td><td><button class="xs ghost" onclick="$('bx${i}').remove();bexTot()">✕</button></td></tr>`); }
+    body.insertAdjacentHTML('beforeend', `<tr id="bx${i}" data-cd="${esc(r.cd || '')}"><td class="muted small">${i}</td><td><input id="bx-d${i}" type="date" value="${esc(r.d || '')}"></td><td><select id="bx-h${i}" onchange="bexTot();bexNarr(${i})">${expSelOpts(r.h || '')}</select></td><td><select id="bx-c${i}">${cbSelOpts(r.cb || '', '(default)')}</select></td>
+    <td><input id="bx-a${i}" class="num" type="number" step="0.01" value="${r.amt || ''}" oninput="bexTot()"></td><td><select id="bx-m${i}"><option value="">(default)</option>${MODES.map(m => `<option ${r.mode === m ? 'selected' : ''}>${m}</option>`).join('')}</select></td><td><input id="bx-r${i}" value="${esc(r.ref || '')}"></td><td><input id="bx-t${i}" list="bx-nl${i}" autocomplete="off" value="${esc(r.nar || '')}" placeholder="e.g. MSEB bill for May"><datalist id="bx-nl${i}"></datalist></td><td><button class="xs ghost" onclick="$('bx${i}').remove();bexTot()">✕</button></td></tr>`); if (r.h) bexNarr(i); }
   bexTot();
 }
+function bexNarr(i) { const h = val('bx-h' + i); const dl = $('bx-nl' + i); if (!dl) return; const d = val('bx-d' + i) || val('bx-d') || today(); const L = h ? narrHistory('P', h) : []; dl.innerHTML = L.map(x => `<option value="${esc(shiftMonths(x.nar, x.d, d))}">`).join('');
+  const t = $('bx-t' + i); if (t && !t.value && L.length) t.placeholder = shiftMonths(L[0].nar, L[0].d, d) + '  (↓ earlier)'; }
 function bexTot() { let n = 0, t = 0; $$('#bx-body tr').forEach(tr => { const i = tr.id.slice(2); const a = nval('bx-a' + i); if (a > 0) { n++; t += a; } }); const e = $('bx-tot'); if (e) e.innerHTML = `${n} payment(s) · <b>₹${fmt(t)}</b>`; }
 async function bexSave() {
   const msg = $('bx-msg');
@@ -2273,7 +2341,7 @@ page('bsetup', {
     const bh = billHeads(); const mem = Object.entries(S.members).filter(([, m]) => m && m.active !== false).sort((a, b) => sortFlat(a[1], b[1])); const st = SET().billing;
     const pend = []; for (const [mid, p] of Object.entries(S.pending || {})) for (const [pid, x] of Object.entries(p || {})) if (x) pend.push({ mid, pid, ...x });
     shell('🧮 Billing Setup', `Monthly charge per member per billing head · ${st.per} billing @ ${st.rate}% interest${st.gst.on ? ' · GST on' : ''} <a href="#" onclick="go('settings','billing');return false">change</a>`,
-      `${canEdit() ? `<button class="ghost" onclick="billHeadsModal()">🧾 Billing heads</button><button class="ghost" onclick="bcFillCol()">↧ Fill a column</button><button class="ghost" onclick="bcByArea()">📐 By area rate</button><button class="ghost" onclick="bcImport()">📥 Import</button>` : ''}<button class="ghost" onclick="bcExport()">📤 Excel</button>`,
+      `${canEdit() ? `<button class="ghost" onclick="billHeadsModal()">🧾 Billing heads</button><button class="ghost" onclick="bcFillCol()">↧ Fill a column</button><button class="ghost" onclick="bcByArea()">📐 By area rate</button><button class="ghost" onclick="bcImport()">📥 Import (Excel / CSV)</button>` : ''}<button class="ghost" onclick="bcExport()">📤 Excel</button><button class="ghost" onclick="bcExport('csv')">📤 CSV</button>`,
       `${!bh.length ? '<div class="alert a-warn">No billing heads yet. Click <b>🧾 Billing heads</b> to choose which heads are charged in bills.</div>' : ''}
       <div class="alert a-info small">Amounts are <b>per month</b>. For ${st.per.toLowerCase()} billing each bill charges ${ENG.periodInfo(st.per).m} × these amounts.</div>
       <div class="tw tall" data-form><table class="bgrid"><thead><tr><th class="sticky-l">Flat</th><th>Member</th>${bh.map(([id, h]) => `<th class="n" title="${esc(h.name)}${h.grp === 'Liabilities' ? ' (credited to fund)' : ''}">${esc(h.name.length > 16 ? h.name.slice(0, 15) + '…' : h.name)}${h.grp === 'Liabilities' ? ' ⓕ' : ''}</th>`).join('')}<th class="n">Total</th></tr></thead><tbody>
@@ -2303,21 +2371,29 @@ function bcByArea() {
   const bh = billHeads(); openModal({ title: '📐 Charge by area', body: `<p class="small muted" style="margin-bottom:8px">Amount = member area (sq.ft) × rate. Members without area are left unchanged.</p><div class="fr c2"><div><label>Billing head</label><select id="ar-h">${bh.map(([id, h]) => `<option value="${id}">${esc(h.name)}</option>`).join('')}</select></div><div><label>Rate per sq.ft per month (₹)</label><input id="ar-r" class="num" type="number" step="0.01"></div></div><label class="row small"><input type="checkbox" id="ar-rd" checked> round to rupee</label>`, ok: 'Apply',
     onOk: () => { const h = val('ar-h'), r = nval('ar-r'), rd = $('ar-rd').checked; $$('.bgrid tbody tr[data-m]').forEach(tr => { const m = M(tr.dataset.m); if (!m || !+m.area) return; const i = tr.querySelector(`input[data-h="${h}"]`); const v = +m.area * r; i.value = rd ? Math.round(v) : r2(v); bcTot(i); }); toast('Applied — click Save'); } });
 }
-function bcExport() { const bh = billHeads(); xlsx('Billing_Setup_' + (S.meta.name || ''), [{ name: 'Billing Setup', noHead: true, rows: [['Wing', 'Flat', 'Name', ...bh.map(([, h]) => h.name)], ...Object.entries(S.members).filter(([, m]) => m && m.active !== false).sort((a, b) => sortFlat(a[1], b[1])).map(([mid, m]) => [m.wing || '', m.flat, m.name, ...bh.map(([hid]) => +((S.bcfg[mid] || {})[hid] || 0))])], cols: [7, 8, 28, ...bh.map(() => 14)] }]); }
+function bcExport(fmtx) { const bh = billHeads(); const rows = [['Wing', 'Flat', 'Name', ...bh.map(([, h]) => h.name)], ...Object.entries(S.members).filter(([, m]) => m && m.active !== false).sort((a, b) => sortFlat(a[1], b[1])).map(([mid, m]) => [m.wing || '', String(m.flat == null ? '' : m.flat), m.name, ...bh.map(([hid]) => +((S.bcfg[mid] || {})[hid] || 0))])];
+  const fn = 'Billing_Setup_' + (S.meta.name || '').replace(/\W+/g, '_').slice(0, 40);
+  if (fmtx === 'csv') { download(fn + '.csv', '\ufeff' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n'), 'text/csv'); return toast('CSV downloaded — change the amounts, save as CSV and use Import', 'ok', 6000); }
+  xlsx(fn, [{ name: 'Billing Setup', noHead: true, rows, cols: [7, 8, 28, ...bh.map(() => 14)] }]); toast('Excel downloaded — change the amounts, save and use Import', 'ok', 6000); }
 function bcImport() {
   pickFile('.xlsx,.xls,.csv', async f => {
     try {
-      const rows = await readSheet(f); const bh = billHeads(); const up = {}; let n = 0, miss = 0;
-      const byName = {}; bh.forEach(([id, h]) => byName[h.name.toLowerCase().replace(/[^a-z0-9]/g, '')] = id);
-      const idx = {}; for (const [id, m] of Object.entries(S.members)) idx[(m.wing || '').toLowerCase() + '|' + String(m.flat).toLowerCase()] = id;
+      const rows = await readSheet(f); const bh = billHeads(); const up = {}; let n = 0; const miss = [], unknownCols = [];
+      const nk = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+      const byName = {}; bh.forEach(([id, h]) => byName[nk(h.name)] = id); Object.entries(S.heads).forEach(([id, h]) => { if (h && h.bill && h.bill.on && !byName[nk(h.name)]) byName[nk(h.name)] = id; });
+      const idx = {}; for (const [id, m] of Object.entries(S.members)) if (m) idx[nk(m.wing || '') + '|' + nk(m.flat)] = id; const fi = flatIndex();
+      const skip = new Set(['wing', 'flat', 'flatno', 'name', 'member', 'total', 'unit']);
+      if (rows.length) for (const k of Object.keys(rows[0])) if (!byName[nk(k)] && !skip.has(nk(k)) && !/^__empty/i.test(k)) unknownCols.push(k);
       for (const r of rows) {
-        const keys = Object.keys(r); const g = n2 => { const k = keys.find(k => k.toLowerCase().replace(/[^a-z]/g, '') === n2); return k ? String(r[k]).trim() : ''; };
-        const mid = idx[g('wing').toLowerCase() + '|' + g('flat').toLowerCase()]; if (!mid) { miss++; continue; }
-        for (const k of keys) { const hid = byName[k.toLowerCase().replace(/[^a-z0-9]/g, '')]; if (hid) { up[`bcfg/${mid}/${hid}`] = r2(numv(r[k])) || null; n++; } }
+        const keys = Object.keys(r); const g = n2 => { const k = keys.find(k => nk(k) === n2); return k ? String(r[k] == null ? '' : r[k]).trim() : ''; };
+        const fl = g('flat') || g('flatno') || g('unit'); if (!fl && !g('name')) continue;
+        const mid = idx[nk(g('wing')) + '|' + nk(fl)] || fi[String(fl).toLowerCase().replace(/\s+/g, '')] || fi[(g('wing') + '-' + fl).toLowerCase().replace(/\s+/g, '')];
+        if (!mid) { miss.push([g('wing'), fl].filter(Boolean).join('-')); continue; }
+        for (const k of keys) { const hid = byName[nk(k)]; if (!hid) continue; const v = r2(numv(r[k])); const old = +((S.bcfg[mid] || {})[hid] || 0); if (v !== old) { up[`bcfg/${mid}/${hid}`] = v || null; n++; } }
       }
-      if (!n) return toast('No matching columns. Use the exported Excel as template.', 'warn');
-      if (!(await confirmBox(`Update ${n} amounts${miss ? ` (${miss} rows with unknown flat skipped)` : ''}?`))) return;
-      await commit(up, { a: 'import', e: 'Billing setup', s: `${n} amounts imported` }); toast('Imported');
+      if (!n) return toast(miss.length ? `Nothing changed. Flats not found: ${miss.slice(0, 5).join(', ')}` : unknownCols.length ? `Nothing changed. Columns not matching any billing head: ${unknownCols.slice(0, 4).join(', ')}` : 'Nothing changed — the amounts in the file are the same as now.', 'warn', 8000);
+      if (!(await confirmBox(`Change ${n} amount(s)?${miss.length ? `\n\nFlats not found (skipped): ${miss.slice(0, 8).join(', ')}${miss.length > 8 ? '…' : ''}` : ''}${unknownCols.length ? `\n\nColumns ignored (not a billing head): ${unknownCols.slice(0, 6).join(', ')}` : ''}`))) return;
+      await commit(up, { a: 'import', e: 'Billing setup', s: `${n} amounts imported` }); $$('.bgrid input').forEach(i => delete i.dataset.dirty); render(); toast(`Imported — ${n} amount(s) changed`);
     } catch (e) { toast(e.message, 'err'); }
   });
 }
@@ -2647,44 +2723,102 @@ function receiptsSincePrev(b) {
   return [...old, ...cur];
 }
 function qrImg(text) { try { if (typeof qrcode === 'undefined') return ''; const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createImgTag(3, 2); } catch (e) { return ''; } }
-function billDocHtml(bid, opt = {}) {
-  const b = S.bills[bid]; if (!b) return ''; const m = M(b.mid) || {}; const st = SET().bill;
+// Bill templates: classic · boxed (formal, Sr. No. column) · modern (colour band, highlighted amount)
+const BILL_TPLS = { classic: 'Classic', boxed: 'Formal boxed', modern: 'Modern colour' };
+const RCPT_TPLS = { classic: 'Classic', boxed: 'Formal with counterfoil', modern: 'Modern colour' };
+const tplColor = () => SET().tpl.color || '#1f4e8c';
+const TPL_CSS = col => { const c = col || tplColor(); return `<style>
+.tb-boxed{border:1.5px solid #333;padding:8px 10px}.tb-boxed .lh{border-bottom:1.5px solid #333}.tb-boxed h2.tt{background:#eee;border:1px solid #999;padding:3px;margin:4px 0 7px}
+.tb-boxed .ig{display:grid;grid-template-columns:1fr 1fr;border:1px solid #999;margin-bottom:7px}.tb-boxed .ig>div{padding:3px 7px;border-bottom:1px solid #ddd;font-size:11.5px}.tb-boxed .ig>div:nth-child(odd){border-right:1px solid #ddd}
+.qrb img{width:100px!important;height:100px!important}.tb-boxed .sum{display:flex;justify-content:flex-end}.tb-boxed .sum table{width:55%}.tb-boxed .foot{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}.tb-boxed .foot>div{border:1px solid #bbb;padding:5px 7px;font-size:10.5px}
+.tb-modern .band{background:${c};color:#fff;border-radius:6px;padding:9px 12px;display:flex;align-items:center;gap:12px}.tb-modern .band img{max-height:52px;max-width:70px;background:#fff;border-radius:4px;padding:2px}.tb-modern .band .n{font-size:18px;font-weight:800}.tb-modern .band .s{font-size:10.5px;opacity:.9}
+.tb-modern .ttl{display:flex;justify-content:space-between;align-items:center;margin:8px 0 6px}.tb-modern .ttl h2{font-size:15px;letter-spacing:2px;color:${c}}
+.tb-modern .cards{display:grid;grid-template-columns:1.3fr 1fr;gap:8px;margin-bottom:8px}.tb-modern .cards>div{background:#f4f6fa;border-radius:6px;padding:7px 10px;font-size:11.5px;line-height:1.6}
+.tb-modern th{background:${c};color:#fff;border-color:${c}}.tb-modern tbody tr:nth-child(even) td{background:#f8f9fc}.tb-modern td{border-color:#e0e3ea}
+.tb-modern .pay{display:flex;justify-content:space-between;align-items:center;border:2px solid ${c};border-radius:8px;padding:8px 12px;margin-top:8px}.tb-modern .pay .a{font-size:20px;font-weight:800;color:${c}}
+.rc-boxed{border:1.5px solid #333;padding:0;display:grid;grid-template-columns:30% 70%}.rc-boxed .cf{border-right:1.5px dashed #777;padding:8px;font-size:10.5px;line-height:1.7}.rc-boxed .mn{padding:8px 10px}
+.rc-modern{border-radius:8px;border:1px solid #d6dae3;overflow:hidden}.rc-modern .band{background:${c};color:#fff;padding:8px 12px;display:flex;justify-content:space-between;align-items:center}.rc-modern .bd{padding:9px 12px}.rc-modern .amt{display:inline-block;border:2px solid ${c};color:${c};border-radius:6px;padding:4px 12px;font-size:17px;font-weight:800}
+</style>`; };
+function billParts(bid) {
+  const b = S.bills[bid]; if (!b) return null; const m = M(b.mid) || {}; const st = SET().bill;
   const info = (ENG.replayMember(S, b.mid, { lines: L_() }).bills || {})[bid] || {};
   const pre = info.pre || { P: 0, I: 0, N: 0, tot: 0 };
   const hs = Object.entries(b.ch || {}).sort((x, y) => ((H(x[0]).bill || {}).order || 99) - ((H(y[0]).bill || {}).order || 99));
-  const chRows = hs.map(([h, a]) => `<tr><td>${esc(H(h).name)}</td><td class="n">${pn(fmt(a))}</td></tr>`).join('');
-  const notes = (b.notes || []).map(n => `<tr><td class="small muted" colspan="2">↳ ${esc(n)}</td></tr>`).join('');
-  const g = b.gst ? `<tr><td>${T('cgst')} @ ${r2((b.run && S.runs[b.run] && S.runs[b.run].gst ? S.runs[b.run].gst.rate : SET().billing.gst.rate) / 2)}%</td><td class="n">${pn(fmt(b.gst.c))}</td></tr><tr><td>${T('sgst')}</td><td class="n">${pn(fmt(b.gst.s))}</td></tr>` : '';
-  const pay = info.payable == null ? ENG.billTotal(b) : info.payable;
-  const arrRows = Math.abs(pre.tot) < 0.005 ? '' : (st.showSplit && pre.tot > 0 && pre.I > 0 ? `<tr><td>${T('arrP')}</td><td class="n">${pn(fmt(pre.P + pre.N))}</td></tr><tr><td>${T('arrI')}</td><td class="n">${pn(fmt(pre.I))}</td></tr>` : `<tr><td>${pre.tot < 0 ? T('advance') : T('arrears')}</td><td class="n">${pre.tot < 0 ? '(−) ' : ''}${pn(fmt(Math.abs(pre.tot)))}</td></tr>`);
-  const rc = opt.receipts === false ? [] : receiptsSincePrev(b);
+  const rows = hs.map(([h, a]) => ({ l: H(h).name, a }));
+  const notes = b.notes || [];
+  if (b.gst) { const rate = r2((b.run && S.runs[b.run] && S.runs[b.run].gst ? S.runs[b.run].gst.rate : SET().billing.gst.rate) / 2); rows.push({ l: `${T('cgst')} @ ${rate}%`, a: b.gst.c }, { l: `${T('sgst')} @ ${rate}%`, a: b.gst.s }); }
+  if (b.int) rows.push({ l: T('interest'), a: b.int });
+  const pay = info.payable == null ? ENG.billTotal(b) : info.payable; const cur = info.current == null ? ENG.billTotal(b) : info.current;
+  const arr = Math.abs(pre.tot) < 0.005 ? [] : (st.showSplit && pre.tot > 0 && pre.I > 0 ? [{ l: T('arrP'), a: pre.P + pre.N }, { l: T('arrI'), a: pre.I }] : [{ l: pre.tot < 0 ? T('advance') : T('arrears'), a: Math.abs(pre.tot), neg: pre.tot < 0 }]);
   const upi = st.upi && pay > 0 ? `upi://pay?pa=${encodeURIComponent(st.upi)}&pn=${encodeURIComponent(S.meta.name || '')}&am=${r2(pay).toFixed(2)}&cu=INR&tn=${encodeURIComponent(b.no + ' ' + flatLbl(m))}` : '';
-  return `<div class="doc nb ${opt.half ? 'half' : ''}">${letterhead()}
-  <h2 class="tt">${b.supp ? T('suppbill') : T('bill')}</h2>
+  return { b, m, st, rows, notes, pay, cur, arr, upi, period: b.supp ? esc(b.desc || '') : `${T('period')}: <b>${perLbl(b.from, b.to)}</b>` };
+}
+const amtTd = x => `<td class="n">${x.neg ? '(−) ' : ''}${pn(fmt(x.a))}</td>`;
+function billBodyClassic(P) {
+  const { b, m, st, rows, notes, pay, cur, arr, upi } = P;
+  return `${letterhead()}<h2 class="tt">${b.supp ? T('suppbill') : T('bill')}</h2>
   <div class="meta"><div><b style="font-size:13px">${esc(m.name || '')}</b>${m.name2 ? `<br><span class="small">${esc(m.name2)}</span>` : ''}<br>${T('flat')}: <b>${esc(pn(flatLbl(m)))}</b>${m.area ? ` · ${T('area')}: ${pn(m.area)} sq.ft` : ''}</div>
-  <div class="right">${T('billNo')}: <b>${esc(pn(b.no))}</b><br>${T('billDate')}: <b>${pn(fd(b.d))}</b>${b.due ? `<br>${T('due')}: <b>${pn(fd(b.due))}</b>` : ''}<br>${b.supp ? esc(b.desc || '') : `${T('period')}: <b>${perLbl(b.from, b.to)}</b>`}</div></div>
+  <div class="right">${T('billNo')}: <b>${esc(pn(b.no))}</b><br>${T('billDate')}: <b>${pn(fd(b.d))}</b>${b.due ? `<br>${T('due')}: <b>${pn(fd(b.due))}</b>` : ''}<br>${P.period}</div></div>
   <div style="display:flex;gap:10px;align-items:flex-start"><table style="flex:1"><thead><tr><th>${T('particulars')}</th><th class="n" style="width:110px">${T('amount')}</th></tr></thead><tbody>
-  ${chRows}${notes}${g}${b.int ? `<tr><td>${T('interest')}</td><td class="n">${pn(fmt(b.int))}</td></tr>` : ''}
-  <tr class="g"><td>${T('current')}</td><td class="n">${pn(fmt(info.current == null ? ENG.billTotal(b) : info.current))}</td></tr>${arrRows}
+  ${rows.map(x => `<tr><td>${esc(x.l)}</td>${amtTd(x)}</tr>`).join('')}${notes.map(n => `<tr><td class="small muted" colspan="2">↳ ${esc(n)}</td></tr>`).join('')}
+  <tr class="g"><td>${T('current')}</td><td class="n">${pn(fmt(cur))}</td></tr>${arr.map(x => `<tr><td>${esc(x.l)}</td>${amtTd(x)}</tr>`).join('')}
   <tr class="tot"><td>${pay < 0 ? T('advance') : T('total')}</td><td class="n" style="font-size:13px">₹ ${pn(fmt(Math.abs(pay)))}</td></tr></tbody></table>
   ${upi && st.qr ? `<div class="center small" style="width:118px">${qrImg(upi)}<div>${T('pay')}</div><div class="muted" style="word-break:break-all">${esc(st.upi)}</div></div>` : ''}</div>
   <p class="small" style="margin-top:4px"><b>${T('words')}:</b> ${esc(amtWords(Math.abs(pay)))}</p>
   ${st.bankAc ? `<p class="small" style="margin-top:3px"><b>${T('bank')}:</b> ${esc([st.bankName, 'A/c ' + st.bankAc, st.bankIfsc && 'IFSC ' + st.bankIfsc, st.bankBranch].filter(Boolean).join(' · '))}</p>` : ''}
   ${st.notes ? `<div class="small" style="margin-top:4px;white-space:pre-line"><b>${T('notes')}:</b>\n${esc(st.notes)}</div>` : ''}
-  ${billSign('bill', 30)}
-  ${rc.length ? (() => { const tot = sum(rc, r => r.bnc ? 0 : r.amt);
-    return `<div class="cut">✂</div><div class="rcbox"><h2 class="tt" style="margin:0 0 4px">${T('rcptHead')}</h2>
-    <p style="margin-bottom:5px">${T('rcptLine')} <b>${esc(m.name || '')}</b> (${T('flat')} <b>${esc(pn(flatLbl(m)))}</b>) ${T('followingPay')}:</p>
-    <table><thead><tr><th>${T('rcptNo')}</th><th>${T('date')}</th><th>${T('mode')}</th><th>${T('chq')}</th><th>${T('towardsP')}</th><th class="n">${T('amount')}</th></tr></thead><tbody>
+  ${billSign('bill', 30)}`;
+}
+function billBodyBoxed(P) {
+  const { b, m, st, rows, notes, pay, cur, arr, upi } = P;
+  return `<div class="tb-boxed">${letterhead()}<h2 class="tt">${b.supp ? T('suppbill') : T('bill')}</h2>
+  <div class="ig"><div>${T('member')}: <b>${esc(m.name || '')}</b>${m.name2 ? ' / ' + esc(m.name2) : ''}</div><div>${T('billNo')}: <b>${esc(pn(b.no))}</b></div>
+  <div>${T('flat')}: <b>${esc(pn(flatLbl(m)))}</b>${m.area ? ` · ${T('area')}: ${pn(m.area)} sq.ft` : ''}</div><div>${T('billDate')}: <b>${pn(fd(b.d))}</b></div>
+  <div>${P.period}</div><div>${b.due ? `${T('due')}: <b>${pn(fd(b.due))}</b>` : '&nbsp;'}</div></div>
+  <table><thead><tr><th style="width:44px">${T('srno')}</th><th>${T('particulars')}</th><th class="n" style="width:120px">${T('amount')}</th></tr></thead><tbody>
+  ${rows.map((x, i) => `<tr><td class="center">${pn(i + 1)}</td><td>${esc(x.l)}</td>${amtTd(x)}</tr>`).join('')}${notes.map(n => `<tr><td></td><td class="small muted" colspan="2">↳ ${esc(n)}</td></tr>`).join('')}
+  </tbody></table>
+  <div class="sum" style="margin-top:6px;gap:12px;align-items:flex-start">${upi && st.qr ? `<div class="center small qrb" style="width:104px;flex:0 0 104px">${qrImg(upi)}<div>${T('pay')}</div></div>` : ''}<table><tbody><tr><td>${T('current')}</td><td class="n">${pn(fmt(cur))}</td></tr>${arr.map(x => `<tr><td>${esc(x.l)}</td>${amtTd(x)}</tr>`).join('')}<tr class="tot"><td>${pay < 0 ? T('advance') : T('total')}</td><td class="n" style="font-size:13px">₹ ${pn(fmt(Math.abs(pay)))}</td></tr></tbody></table></div>
+  <p class="small" style="margin-top:4px"><b>${T('words')}:</b> ${esc(amtWords(Math.abs(pay)))}</p>
+  <div class="foot">${st.bankAc ? `<div><b>${T('bank')}</b><br>${esc(st.bankName || '')}<br>A/c ${esc(st.bankAc)}${st.bankIfsc ? '<br>IFSC ' + esc(st.bankIfsc) : ''}${st.bankBranch ? '<br>' + esc(st.bankBranch) : ''}${st.upi ? '<br>UPI ' + esc(st.upi) : ''}</div>` : '<div></div>'}<div style="white-space:pre-line"><b>${T('notes')}</b>\n${esc(st.notes || '')}</div></div>
+  ${billSign('bill', 30)}</div>`;
+}
+function billBodyModern(P) {
+  const { b, m, st, rows, notes, pay, cur, arr, upi } = P; const s = S.meta; const logo = st.logo;
+  return `<div class="tb-modern"><div class="band">${logo ? `<img src="${logo}">` : ''}<div><div class="n">${esc(socName())}</div><div class="s">${[s.regNo && T('regNo') + ' ' + pn(s.regNo), [s.address, s.city, s.pin].filter(Boolean).join(', ')].filter(Boolean).map(esc).join(' · ')}</div></div></div>
+  <div class="ttl"><h2>${b.supp ? T('suppbill') : T('bill')}</h2><div class="small right">${T('billNo')}: <b>${esc(pn(b.no))}</b> · ${T('billDate')}: <b>${pn(fd(b.d))}</b></div></div>
+  <div class="cards"><div><b style="font-size:13px">${esc(m.name || '')}</b>${m.name2 ? `<br>${esc(m.name2)}` : ''}<br>${T('flat')}: <b>${esc(pn(flatLbl(m)))}</b>${m.area ? ` · ${pn(m.area)} sq.ft` : ''}</div><div>${P.period}${b.due ? `<br>${T('due')}: <b>${pn(fd(b.due))}</b>` : ''}</div></div>
+  <table><thead><tr><th>${T('particulars')}</th><th class="n" style="width:120px">${T('amount')}</th></tr></thead><tbody>
+  ${rows.map(x => `<tr><td>${esc(x.l)}</td>${amtTd(x)}</tr>`).join('')}${notes.map(n => `<tr><td class="small muted" colspan="2">↳ ${esc(n)}</td></tr>`).join('')}
+  <tr class="g"><td>${T('current')}</td><td class="n">${pn(fmt(cur))}</td></tr>${arr.map(x => `<tr><td>${esc(x.l)}</td>${amtTd(x)}</tr>`).join('')}</tbody></table>
+  <div class="pay"><div><div class="small muted">${pay < 0 ? T('advance') : T('total')}${b.due && pay > 0 ? ` · ${T('due')} ${pn(fd(b.due))}` : ''}</div><div class="a">₹ ${pn(fmt(Math.abs(pay)))}</div><div class="small">${esc(amtWords(Math.abs(pay)))}</div></div>${upi && st.qr ? `<div class="center small qrb">${qrImg(upi)}<div>${T('pay')}</div></div>` : ''}</div>
+  ${st.bankAc ? `<p class="small" style="margin-top:6px"><b>${T('bank')}:</b> ${esc([st.bankName, 'A/c ' + st.bankAc, st.bankIfsc && 'IFSC ' + st.bankIfsc, st.bankBranch].filter(Boolean).join(' · '))}</p>` : ''}
+  ${st.notes ? `<div class="small" style="margin-top:4px;white-space:pre-line;color:#444">${esc(st.notes)}</div>` : ''}
+  ${billSign('bill', 30)}</div>`;
+}
+// Receipts printed below a bill (all templates share the table; the frame follows the template)
+function billRcptBox(P, rc, tpl) {
+  const { m } = P; const tot = sum(rc, r => r.bnc ? 0 : r.amt);
+  const table = `<table><thead><tr><th>${T('rcptNo')}</th><th>${T('date')}</th><th>${T('mode')}</th><th>${T('chq')}</th><th>${T('towardsP')}</th><th class="n">${T('amount')}</th></tr></thead><tbody>
     ${rc.map(r => `<tr><td style="white-space:nowrap">${esc(pn(r.no))}</td><td style="white-space:nowrap">${pn(fd(r.d))}</td><td>${esc(r.mode)}</td><td>${esc(r.ref)}</td><td>${r.bnc ? '<b>Cheque returned – not credited</b>' : allocText(r.al, (r.al || []).length > 1)}</td><td class="n">${r.bnc ? '<s>' + pn(fmt(r.amt)) + '</s>' : pn(fmt(r.amt))}</td></tr>`).join('')}
     <tr class="tot"><td colspan="5">${T('totalRcvd')}</td><td class="n">₹ ${pn(fmt(tot))}</td></tr></tbody></table>
-    <p class="small" style="margin-top:3px"><b>${T('words')}:</b> ${esc(amtWords(tot))}${rc.some(r => /cheque|dd|demand/i.test(r.mode)) ? ` · ${T('subj')}` : ''}</p>${billSign('receipt', 26)}</div>`; })() : (opt.receipts === false || b.supp ? '' : `<div class="cut">✂</div><p class="small center">${T('noRcpt')}</p>`)}</div>`;
+    <p class="small" style="margin-top:3px"><b>${T('words')}:</b> ${esc(amtWords(tot))}${rc.some(r => /cheque|dd|demand/i.test(r.mode)) ? ` · ${T('subj')}` : ''}</p>`;
+  const line = `<p style="margin-bottom:5px">${T('rcptLine')} <b>${esc(m.name || '')}</b> (${T('flat')} <b>${esc(pn(flatLbl(m)))}</b>) ${T('followingPay')}:</p>`;
+  if (tpl === 'modern') return `<div class="cut">✂</div><div class="rc-modern"><div class="band"><b style="letter-spacing:2px">${T('rcptHead')}</b><span class="small">${esc(socName())}</span></div><div class="bd">${line}${table}${billSign('receipt', 26)}</div></div>`;
+  return `<div class="cut">✂</div><div class="rcbox" ${tpl === 'boxed' ? 'style="border:1.5px solid #333"' : ''}><h2 class="tt" style="margin:0 0 4px">${T('rcptHead')}</h2>${line}${table}${billSign('receipt', 26)}</div>`;
+}
+function billDocHtml(bid, opt = {}) {
+  const P = billParts(bid); if (!P) return ''; const tpl = opt.tpl || SET().tpl.bill || 'classic';
+  const body = tpl === 'boxed' ? billBodyBoxed(P) : tpl === 'modern' ? billBodyModern(P) : billBodyClassic(P);
+  const rc = opt.receipts === false ? [] : receiptsSincePrev(P.b);
+  const rcHtml = rc.length ? billRcptBox(P, rc, tpl) : (opt.receipts === false || P.b.supp ? '' : `<div class="cut">✂</div><p class="small center">${T('noRcpt')}</p>`);
+  return `<div class="doc nb ${opt.half ? 'half' : ''}">${body}${rcHtml}</div>`;
 }
 function printBills(ids, opt = {}) {
   if (!ids.length) return toast('Nothing to print', 'warn');
   const half = opt.layout === 'two';
-  const css = half ? `<style>.doc.half{height:136mm;overflow:hidden;border-bottom:1px dashed #999;padding-bottom:4mm;margin-bottom:4mm}.doc.half .lh-n{font-size:15px}.doc.half td,.doc.half th{padding:2px 5px;font-size:10.5px}</style>` : '';
-  const make = () => css + ids.map((id, k) => billDocHtml(id, { half, receipts: opt.receipts }) + (half ? (k % 2 === 1 && k < ids.length - 1 ? '<div class="pb"></div>' : '') : (k < ids.length - 1 ? '<div class="pb"></div>' : ''))).join('');
+  const css = TPL_CSS(opt.color) + (half ? `<style>.doc.half{height:136mm;overflow:hidden;border-bottom:1px dashed #999;padding-bottom:4mm;margin-bottom:4mm}.doc.half .lh-n{font-size:15px}.doc.half td,.doc.half th{padding:2px 5px;font-size:10.5px}</style>` : '');
+  const make = () => css + ids.map((id, k) => billDocHtml(id, { half, receipts: opt.receipts, tpl: opt.tpl }) + (half ? (k % 2 === 1 && k < ids.length - 1 ? '<div class="pb"></div>' : '') : (k < ids.length - 1 ? '<div class="pb"></div>' : ''))).join('');
   const needPrev = opt.receipts !== false && typeof prevFyId === 'function' && prevFyId() && !prevFYReady() && ids.some(id => { const b = S.bills[id]; return b && !Object.values(S.bills).some(x => x.mid === b.mid && x.d < b.d); });
   if (!needPrev) return printDoc('Bills', make());
   // open the window now (keeps the click's pop-up permission), fill it once last year's receipts are loaded
@@ -2906,15 +3040,15 @@ function ieRows(d) {
   return { ie, L, R, on, py };
 }
 page('ie', {
-  render() { shell('📊 Income & Expenditure Account', '', `<button class="ghost" onclick="ieOut('x')">📥 Excel (T-format)</button><button class="ghost" onclick="ieOut('p')">🖨 Print</button>`, `<div class="toolbar" data-form><label style="margin:0">For the period up to</label><input type="date" id="ie-d" value="${S.fy.end}" min="${S.fy.start}" max="${S.fy.end}" onchange="PAGES.ie.refresh()">${pyToggle('ie')}<span id="ie-pyn" class="small muted"></span></div><div id="ie-res"></div>`); this.refresh(); },
+  render() { shell('📊 Income & Expenditure Account', '', `<button class="ghost" onclick="ieOut('x')">📥 Excel</button><button class="ghost" onclick="ieOut('p')">🖨 Print</button>`, `<div class="toolbar" data-form><label style="margin:0">For the period up to</label><input type="date" id="ie-d" value="${S.fy.end}" min="${S.fy.start}" max="${S.fy.end}" onchange="PAGES.ie.refresh()">${pyToggle('ie')}${fsPicker('ie')}<span id="ie-pyn" class="small muted"></span></div><div id="ie-res"></div>`); this.refresh(); },
   refresh() { const { ie, L, R, on, py } = ieRows(val('ie-d')); L.forEach(r => r.hid && (r.click = `go('gl','${r.hid}')`)); R.forEach(r => r.hid && (r.click = `go('gl','${r.hid}')`));
     if (showPY() && !py.any && canEdit() && prevFyId() && !PY_TRIED[S.fyId]) { PY_TRIED[S.fyId] = 1; fillPyFromPrevFY(true).catch(() => { }); }
     $('ie-pyn').innerHTML = showPY() && !py.any ? (prevFyId() ? `Previous-year figures are being taken from FY ${esc(S.fys[prevFyId()].label)}… <a href="#" onclick="fillPyFromPrevFY();return false">refresh</a>` : `No previous-year figures yet — <a href="#" onclick="go('obal','py');return false">enter them</a> (filled automatically after year-end).`) : '';
     $('ie-res').innerHTML = `<div class="tfmt ${on ? 'haspv' : ''}"><div>${tHead('EXPENDITURE', on)}${tHtml(L, on)}</div><div>${tHead('INCOME', on)}${tHtml(R, on)}</div></div><div class="card center" style="margin-top:12px"><b class="${ie.surplus >= 0 ? 'cr' : 'dr'}" style="font-size:17px">${ie.surplus >= 0 ? 'Surplus' : 'Deficit'} ₹${fmt(Math.abs(ie.surplus))}</b> <span class="small muted">· Contribution from Members ₹${fmt(sum(ie.inc.filter(x => x.sub === 'Contribution from Members'), x => x.amt))}</span></div>`; }
 });
-function ieOut(how) { const d = val('ie-d'); const { L, R, on } = ieRows(d); const t = `Income & Expenditure Account for the period ${fd(S.fy.start)} to ${fd(d)}`;
-  if (how === 'x') return xlsxT('IE_Account_' + S.fy.label, t, 'EXPENDITURE', 'INCOME', tX(L, on), tX(R, on), on);
-  printReport('Income & Expenditure Account', `For the period ${fd(S.fy.start)} to ${fd(d)}`, `<div class="tf ${on ? 'haspv' : ''}"><div>${tPHead('EXPENDITURE', on)}${tPrint(L, on)}</div><div>${tPHead('INCOME', on)}${tPrint(R, on)}</div></div>${signBlock(designations())}`); }
+function ieOut(how) { const d = val('ie-d'); const { L, R, on, ie, py } = ieRows(d); const sub = `For the period ${fd(S.fy.start)} to ${fd(d)}`;
+  if (how === 'x') return fsExcel('ie', 'Income & Expenditure Account', sub, L, R, on, { ie, py });
+  printReport('Income & Expenditure Account', sub, `${fsHtml('ie', L, R, on, { ie, py })}${signBlock(designations())}`); }
 const designations = () => ['Chairman', 'Secretary', 'Treasurer'];
 
 // ── Balance Sheet ────────────────────────────────────────────────────────
@@ -2924,11 +3058,11 @@ function bsRows(d) {
   if (on) { const have = new Set([...liabs, ...assets].map(x => x.hid)); for (const [hid, v] of Object.entries(pb.heads)) { if (have.has(hid)) continue; const h = S.heads[hid]; if (!h) continue; if (h.grp === 'Liabilities') liabs.push({ hid, h, sub: h.sub || 'Current Liabilities', amt: 0, pv: r2(-v) }); else if (h.grp === 'Assets') assets.push({ hid, h, sub: h.sub || 'Current Assets', amt: 0, pv: v }); } }
   const so = (a, b) => a.sub.localeCompare(b.sub) || String(a.h.code).localeCompare(String(b.h.code)); liabs.sort(so); assets.sort(so);
   const L = groupT(liabs), R = groupT(assets);
-  if (bs.tadv || (on && pb.adv)) L.push({ k: 'l', label: 'Advance received from Members', amt: bs.tadv, pv: on ? pb.adv : null, click: `toggleEl('bs-adv')`, after: `<div id="bs-adv" style="display:none;background:var(--soft)">${bs.adv.map(x => `<div class="tl s small">${on ? '<span class="p"></span>' : ''}<span class="lb">${esc(memLbl(x.m))}</span><span class="a">${fmt(x.amt)}</span></div>`).join('')}</div>` });
+  if (bs.tadv || (on && pb.adv)) L.push({ k: 'l', label: 'Advance received from Members (Schedule B)', amt: bs.tadv, pv: on ? pb.adv : null, click: `toggleEl('bs-adv')`, after: `<div id="bs-adv" style="display:none;background:var(--soft)">${bs.adv.map(x => `<div class="tl s small">${on ? '<span class="p"></span>' : ''}<span class="lb">${esc(memLbl(x.m))}</span><span class="a">${fmt(x.amt)}</span></div>`).join('')}</div>` });
   const pie = on ? pb.ie : null;
   if (bs.ieTotal >= 0) L.push({ k: 'g', label: 'Income & Expenditure Account' }, { k: 's', label: 'Balance as per last Balance Sheet', amt: bs.ieOpen }, { k: 's', label: bs.surplus >= 0 ? 'Add: Surplus for the year' : 'Less: Deficit for the year', amt: bs.surplus }, { k: 'gt', label: 'Total I&E Account', amt: bs.ieTotal, pv: pie != null && pie >= 0 ? pie : null });
   else if (pie != null && pie > 0) L.push({ k: 'l', label: 'Income & Expenditure Account', amt: null, pv: pie });
-  if (bs.td || (on && pb.dues)) R.push({ k: 'l', label: `Dues from Members (${bs.dues.length})`, amt: bs.td, pv: on ? pb.dues : null, click: `toggleEl('bs-dues')`, after: `<div id="bs-dues" style="display:none;background:var(--soft)">${bs.dues.map(x => `<div class="tl s small click" onclick="go('mledger','${x.mid}')">${on ? '<span class="p"></span>' : ''}<span class="lb">${esc(memLbl(x.m))}</span><span class="a">${fmt(x.amt)}</span></div>`).join('')}</div>` });
+  if (bs.td || (on && pb.dues)) R.push({ k: 'l', label: 'Dues from Members (Schedule A)', amt: bs.td, pv: on ? pb.dues : null, click: `toggleEl('bs-dues')`, after: `<div id="bs-dues" style="display:none;background:var(--soft)">${bs.dues.map(x => `<div class="tl s small click" onclick="go('mledger','${x.mid}')">${on ? '<span class="p"></span>' : ''}<span class="lb">${esc(memLbl(x.m))}</span><span class="a">${fmt(x.amt)}</span></div>`).join('')}</div>` });
   if (bs.orphan) (bs.orphan > 0 ? R : L).push({ k: 'l', label: 'Dues (unallocated)', amt: Math.abs(bs.orphan) });
   if (bs.ieTotal < 0) R.push({ k: 'g', label: 'Income & Expenditure Account (Debit)' }, { k: 's', label: 'Balance as per last Balance Sheet', amt: -bs.ieOpen }, { k: 's', label: bs.surplus >= 0 ? 'Less: Surplus for the year' : 'Add: Deficit for the year', amt: -bs.surplus }, { k: 'gt', label: 'Total', amt: -bs.ieTotal, pv: pie != null && pie < 0 ? -pie : null });
   else if (pie != null && pie < 0) R.push({ k: 'l', label: 'Income & Expenditure Account (Debit)', amt: null, pv: -pie });
@@ -2939,15 +3073,13 @@ function bsRows(d) {
 }
 function toggleEl(id) { const e = $(id); if (e) e.style.display = e.style.display === 'none' ? '' : 'none'; }
 page('bs', {
-  render() { shell('📋 Balance Sheet', '', `<button class="ghost" onclick="bsOut('x')">📥 Excel (T-format)</button><button class="ghost" onclick="bsOut('p')">🖨 Print</button>`, `<div class="toolbar" data-form><label style="margin:0">As on</label><input type="date" id="bs-d" value="${S.fy.end}" min="${S.fy.start}" max="${S.fy.end}" onchange="PAGES.bs.refresh()">${pyToggle('bs')}<span class="small muted">Click “Dues from Members” or “Advance” to see member-wise detail.</span></div><div id="bs-res"></div>`); this.refresh(); },
+  render() { shell('📋 Balance Sheet', '', `<button class="ghost" onclick="bsOut('x')">📥 Excel</button><button class="ghost" onclick="bsOut('p')">🖨 Print</button>`, `<div class="toolbar" data-form><label style="margin:0">As on</label><input type="date" id="bs-d" value="${S.fy.end}" min="${S.fy.start}" max="${S.fy.end}" onchange="PAGES.bs.refresh()">${pyToggle('bs')}${fsPicker('bs')}<span class="small muted">Member-wise dues and advances print as Schedules A & B on a separate page (and sheet in Excel). Click them here to see the detail.</span></div><div id="bs-res"></div>`); this.refresh(); },
   refresh() { const { bs, L, R, on } = bsRows(val('bs-d')); $('bs-res').innerHTML = `${Math.abs(bs.diff) > 0.009 ? `<div class="alert a-err">Balance Sheet differs by ₹${fmt(bs.diff)} — usually opening balances don't agree. <a href="#" onclick="go('obal');return false">Check Opening Balances</a></div>` : '<div class="alert a-ok">✓ Balance Sheet tallies</div>'}<div class="tfmt ${on ? 'haspv' : ''}"><div>${tHead('LIABILITIES', on)}${tHtml(L, on)}</div><div>${tHead('ASSETS', on)}${tHtml(R, on)}</div></div>`; }
 });
-function bsOut(how) { const d = val('bs-d'); const { bs, L, R, on } = bsRows(d);
-  const Lx = [], Rx = [];
-  for (const r of L) { Lx.push(tX([r], on)[0]); if (r.label === 'Advance received from Members') bs.adv.forEach(x => Lx.push(['      ' + memLbl(x.m), x.amt, null])); }
-  for (const r of R) { Rx.push(tX([r], on)[0]); if (r.label.startsWith('Dues from Members')) bs.dues.forEach(x => Rx.push(['      ' + memLbl(x.m), x.amt, null])); }
-  if (how === 'x') return xlsxT('Balance_Sheet_' + S.fy.label, `Balance Sheet as on ${fd(d)}`, 'LIABILITIES', 'ASSETS', Lx, Rx, on);
-  printReport('Balance Sheet', 'As on ' + fd(d), `<div class="tf ${on ? 'haspv' : ''}"><div>${tPHead('LIABILITIES', on)}${tPrint(L, on)}</div><div>${tPHead('ASSETS', on)}${tPrint(R, on)}</div></div>${bs.dues.length ? `<h2 class="tt" style="margin-top:14px">Schedule – Dues from Members</h2><table><thead><tr><th>Flat</th><th>Member</th><th class="n">Principal</th><th class="n">Interest</th><th class="n">Total</th></tr></thead><tbody>${bs.dues.map(x => `<tr><td>${esc(flatLbl(x.m))}</td><td>${esc(x.m.name)}</td><td class="n">${fmt(x.P + x.N)}</td><td class="n">${fmt(x.I)}</td><td class="n">${fmt(x.amt)}</td></tr>`).join('')}<tr class="tot"><td colspan="4">Total</td><td class="n">${fmt(bs.td)}</td></tr></tbody></table>` : ''}${signBlock(designations())}`); }
+function bsOut(how) { const d = val('bs-d'); const { bs, L, R, on } = bsRows(d); bs.asOf = d;
+  if (how === 'x') return fsExcel('bs', 'Balance Sheet', 'As on ' + fd(d), L, R, on, { bs });
+  const sch = bsSchedules(bs);
+  printReport('Balance Sheet', 'As on ' + fd(d), `${fsHtml('bs', L, R, on)}${signBlock(designations())}${sch ? `<div class="pb"></div>${letterhead(true)}${sch}` : ''}`); }
 
 // ── Receipts & Payments ──────────────────────────────────────────────────
 function rpRows(f, t) {
@@ -2958,10 +3090,12 @@ function rpRows(f, t) {
   return { rp, L, R };
 }
 page('rp', {
-  render() { shell('💱 Receipts & Payments Account', '', `<button class="ghost" onclick="rpOut('x')">📥 Excel (T-format)</button><button class="ghost" onclick="rpOut('p')">🖨 Print</button>`, rangeBar('rp') + '<div id="rp-res"></div>'); this.refresh(); },
+  render() { shell('💱 Receipts & Payments Account', '', `<button class="ghost" onclick="rpOut('x')">📥 Excel</button><button class="ghost" onclick="rpOut('p')">🖨 Print</button>`, rangeBar('rp', fsPicker('rp')) + '<div id="rp-res"></div>'); this.refresh(); },
   refresh() { const { rp, L, R } = rpRows(rgF(), rgT()); $('rp-res').innerHTML = `${Math.abs(rp.check) > 0.01 ? `<div class="alert a-err">Does not reconcile by ₹${fmt(rp.check)}</div>` : ''}<div class="tfmt"><div><div class="th">RECEIPTS</div>${tHtml(L)}</div><div><div class="th">PAYMENTS</div>${tHtml(R)}</div></div>`; }
 });
-function rpOut(how) { const f = rgF(), t = rgT(); const { L, R } = rpRows(f, t); if (how === 'x') return xlsxT('RP_Account_' + S.fy.label, `Receipts & Payments ${fd(f)} to ${fd(t)}`, 'RECEIPTS', 'PAYMENTS', tX(L), tX(R)); printReport('Receipts & Payments Account', `${fd(f)} to ${fd(t)}`, `<div class="tf"><div><div class="h">RECEIPTS</div>${tPrint(L)}</div><div><div class="h">PAYMENTS</div>${tPrint(R)}</div></div>${signBlock(designations())}`); }
+function rpOut(how) { const f = rgF(), t = rgT(); const { L, R } = rpRows(f, t); const sub = `For the period ${fd(f)} to ${fd(t)}`;
+  if (how === 'x') return fsExcel('rp', 'Receipts & Payments Account', sub, L, R, false);
+  printReport('Receipts & Payments Account', sub, `${fsHtml('rp', L, R, false)}${signBlock(designations())}`); }
 
 // ── Dues & ageing, reminders ─────────────────────────────────────────────
 function duesData(asOf, minAmt, minAge) {
@@ -2977,8 +3111,8 @@ function duesData(asOf, minAmt, minAge) {
 }
 page('dues', {
   render() {
-    shell('🔴 Dues & Ageing', 'Outstanding by member with ageing — select members to print reminder letters', `<button class="ghost" onclick="duesOut()">📥 Excel</button><button class="ghost" onclick="printMain('Members Dues & Ageing','As on '+fd(val('du-d')))">🖨 Print</button>${canEdit() ? `<button onclick="reminderLetters()">✉ Reminder letters</button><button class="ghost" onclick="duesWA()">💬 WhatsApp</button>` : ''}`,
-      `<div class="toolbar" data-form><label style="margin:0">As on</label><input type="date" id="du-d" value="${asOfNow()}" onchange="PAGES.dues.refresh()"><label style="margin:0">Min ₹</label><input id="du-m" type="number" value="${RP.get('dum', '1')}" style="width:100px;min-width:0" onchange="RP.set('dum',this.value);PAGES.dues.refresh()"><select id="du-a" onchange="PAGES.dues.refresh()"><option value="0">All ages</option><option value="3">Over 3 months</option><option value="6">Over 6 months</option><option value="12">Over 12 months</option></select></div><div id="du-res"></div>`);
+    shell('🔴 Dues & Ageing', 'Outstanding by member with ageing — select members to print reminder letters', `<button class="ghost" onclick="osExcel()">📥 Excel</button><button class="ghost" onclick="osPrint()">🖨 Print</button>${canEdit() ? `<button onclick="reminderLetters()">✉ Reminder letters</button><button class="ghost" onclick="duesWA()">💬 WhatsApp</button>` : ''}`,
+      `<div class="toolbar" data-form><label style="margin:0">As on</label><input type="date" id="du-d" value="${asOfNow()}" onchange="PAGES.dues.refresh()"><label style="margin:0">Min ₹</label><input id="du-m" type="number" value="${RP.get('dum', '1')}" style="width:100px;min-width:0" onchange="RP.set('dum',this.value);PAGES.dues.refresh()"><select id="du-a" onchange="PAGES.dues.refresh()"><option value="0">All ages</option><option value="3">Over 3 months</option><option value="6">Over 6 months</option><option value="12">Over 12 months</option></select>${osPicker()}</div><div id="du-res"></div>`);
     this.refresh();
   },
   refresh() {
@@ -3122,6 +3256,166 @@ function jbOut() { const V = jbData(); const rows = [['Date', 'Voucher', 'Type',
   xlsx('Journal_Book_' + S.fy.label, [{ name: 'Journal Book', title: `Journal book ${fd(rgF())} to ${fd(rgT())}`, rows, cols: [11, 11, 9, 42, 13, 13, 40] }]); }
 
 // ═══════════════════════════════════════════════════════════════════════
+// FINAL STATEMENTS — print templates (T-format · ruled T-format · vertical)
+// and properly formatted Excel (ExcelJS) for BS, I&E, R&P and the outstanding list
+// ═══════════════════════════════════════════════════════════════════════
+const FS_TPLS = { t: 'T-format (horizontal)', tr: 'T-format with ruled lines', v: 'Vertical (one column)' };
+const OS_TPLS = { simple: 'Simple list (flat, member, amount)', ageing: 'With principal, interest & ageing', wing: 'Wing-wise with sub-totals' };
+const fsTpl = () => { const v = RP.get('fs_' + S.sid, ''); return FS_TPLS[v] ? v : (SET().tpl.fs || 't'); };
+const osTpl = () => { const v = RP.get('os_' + S.sid, ''); return OS_TPLS[v] ? v : (SET().tpl.os || 'ageing'); };
+const fsPicker = pg => `<label class="row small" style="margin:0">Format <select onchange="RP.set('fs_'+S.sid,this.value)" style="min-width:0">${Object.entries(FS_TPLS).map(([k, l]) => `<option value="${k}" ${fsTpl() === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
+const osPicker = () => `<label class="row small" style="margin:0">Print format <select onchange="RP.set('os_'+S.sid,this.value)" style="min-width:0">${Object.entries(OS_TPLS).map(([k, l]) => `<option value="${k}" ${osTpl() === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
+const FS_CSS = `<style>.tf.ruled .tl{border-bottom:1px solid #e1e3e8;padding-top:3px;padding-bottom:3px}.tf.ruled .tl.g{background:#eef1f5;border-bottom:1px solid #c9ced8}.tf.ruled .tl.b{font-weight:700;border-top:1px solid #999}.tf.ruled .h{background:#dfe4ec}
+.vt td,.vt th{font-size:11.5px}.vt tr.sec td{background:#dfe4ec;font-weight:800;letter-spacing:1px}.vt tr.g td{font-weight:700;background:#f4f6f9}.vt tr.s td:first-child{padding-left:22px}.vt tr.gt td{font-weight:700;border-top:1.5px solid #777}.vt tr.tt td{font-weight:800;border-top:2px solid #333;border-bottom:3px double #333;background:#f6f7f9}
+.sch h3{font-size:13px;text-align:center;margin:4px 0 6px;letter-spacing:1px}</style>`;
+
+// Vertical rows from a T-side: [{label, amt, pv, k}] with a section heading and its own total
+function vRows(sec, rows, on, totLabel) {
+  const out = [`<tr class="sec"><td colspan="${on ? 3 : 2}">${esc(sec)}</td></tr>`];
+  for (const r of rows) {
+    if (r.k === 'tt') { out.push(`<tr class="tt"><td>${esc(totLabel || 'TOTAL')}</td>${on ? `<td class="n">${r.pv == null ? '' : fmt(r.pv)}</td>` : ''}<td class="n">${r.amt == null ? '' : fmt(r.amt)}</td></tr>`); continue; }
+    const pv = r.k === 'g' || r.pv == null || !r.pv ? '' : fmt(r.pv); const a = r.k === 'g' || r.amt == null ? '' : (!r.amt && r.pv ? '–' : fmt(r.amt));
+    out.push(`<tr class="${r.k}"><td>${esc(r.label)}</td>${on ? `<td class="n">${pv}</td>` : ''}<td class="n">${a}</td></tr>`);
+  }
+  return out.join('');
+}
+const vHead = on => `<thead><tr><th>Particulars</th>${on ? '<th class="n" style="width:120px">Previous Year ₹</th>' : ''}<th class="n" style="width:120px">${on ? 'Current Year ₹' : 'Amount ₹'}</th></tr></thead>`;
+// One statement in the chosen print template
+function fsHtml(kind, L, R, on, extra = {}) {
+  const tpl = extra.tpl || fsTpl(); const [lt, rt] = { bs: ['LIABILITIES', 'ASSETS'], ie: ['EXPENDITURE', 'INCOME'], rp: ['RECEIPTS', 'PAYMENTS'] }[kind];
+  if (tpl === 'v') {
+    if (kind === 'ie') { // Income first, then expenditure, then the result
+      const strip = a => a.filter(r => r.k !== 'tt' && !/^Excess of/.test(r.label)); const { ie, py } = extra;
+      const inc = [...strip(R), { k: 'tt', amt: ie.ti, pv: on ? py.ti : null }], exp = [...strip(L), { k: 'tt', amt: ie.te, pv: on ? py.te : null }];
+      const res = `<tr class="tt"><td>${ie.surplus >= 0 ? 'Excess of Income over Expenditure (Surplus)' : 'Excess of Expenditure over Income (Deficit)'}</td>${on ? `<td class="n">${fmt(Math.abs(py.surplus))}${py.surplus < 0 ? ' (Dr)' : ''}</td>` : ''}<td class="n">${fmt(Math.abs(ie.surplus))}</td></tr>`;
+      return `${FS_CSS}<table class="vt">${vHead(on)}<tbody>${vRows('INCOME', inc, on, 'Total Income')}${vRows('EXPENDITURE', exp, on, 'Total Expenditure')}${res}</tbody></table>`;
+    }
+    if (kind === 'bs') return `${FS_CSS}<table class="vt">${vHead(on)}<tbody>${vRows('LIABILITIES & FUNDS', L, on, 'Total Liabilities')}${vRows('ASSETS', R, on, 'Total Assets')}</tbody></table>`;
+    return `${FS_CSS}<table class="vt">${vHead(false)}<tbody>${vRows('RECEIPTS', L, false, 'Total Receipts')}${vRows('PAYMENTS', R, false, 'Total Payments')}</tbody></table>`;
+  }
+  const ruled = tpl === 'tr' ? 'ruled' : '';
+  return `${FS_CSS}<div class="tf ${ruled} ${on ? 'haspv' : ''}"><div>${tPHead(lt, on)}${tPrint(L, on)}</div><div>${tPHead(rt, on)}${tPrint(R, on)}</div></div>`;
+}
+
+// Schedules printed on a separate page / sheet
+function bsSchedules(bs) {
+  const A = bs.dues.length ? `<div class="sch"><h3>SCHEDULE A — DUES FROM MEMBERS (as on ${fd(bs.asOf || '')})</h3><table><thead><tr><th style="width:40px">Sr.</th><th>Flat</th><th>Member</th><th class="n">Principal</th><th class="n">Interest</th><th class="n">Total</th></tr></thead><tbody>${bs.dues.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(flatLbl(x.m))}</td><td>${esc(x.m.name)}</td><td class="n">${fmt(x.P + x.N)}</td><td class="n">${fmt(x.I)}</td><td class="n">${fmt(x.amt)}</td></tr>`).join('')}<tr class="tot"><td colspan="3">Total (${bs.dues.length} members)</td><td class="n">${fmt(sum(bs.dues, x => x.P + x.N))}</td><td class="n">${fmt(sum(bs.dues, x => x.I))}</td><td class="n">${fmt(bs.td)}</td></tr></tbody></table></div>` : '';
+  const B = bs.adv.length ? `<div class="sch" style="margin-top:16px"><h3>SCHEDULE B — ADVANCE RECEIVED FROM MEMBERS</h3><table><thead><tr><th style="width:40px">Sr.</th><th>Flat</th><th>Member</th><th class="n">Advance</th></tr></thead><tbody>${bs.adv.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(flatLbl(x.m))}</td><td>${esc(x.m.name)}</td><td class="n">${fmt(x.amt)}</td></tr>`).join('')}<tr class="tot"><td colspan="3">Total (${bs.adv.length} members)</td><td class="n">${fmt(bs.tadv)}</td></tr></tbody></table></div>` : '';
+  return A + B;
+}
+
+// ── Formatted Excel (ExcelJS) ────────────────────────────────────────────
+// sheet = { name, title, sub, cols:[widths], landscape, rows:[[cell…]] } ; cell = value | { v, b, ind, num, top, dbl, fill, it, al }
+// Indian grouping (1,20,865.00) in Excel
+const INR_FMT = '[>=10000000]##\\,##\\,##\\,##0.00;[>=100000]##\\,##\\,##0.00;##,##0.00';
+async function xlsxPretty(filename, sheets) {
+  if (typeof ExcelJS === 'undefined') { try { await loadScript(EXCELJS_URL); } catch (e) { } }
+  if (typeof ExcelJS === 'undefined') return false;
+  const wb = new ExcelJS.Workbook(); wb.creator = APP_NAME;
+  const thin = { style: 'thin', color: { argb: 'FFB8BEC8' } }, med = { style: 'medium', color: { argb: 'FF333333' } }, dbl = { style: 'double', color: { argb: 'FF333333' } };
+  for (const sh of sheets) {
+    const ws = wb.addWorksheet(String(sh.name).slice(0, 31).replace(/[\\/?*\[\]:]/g, ' '), { pageSetup: { paperSize: 9, orientation: sh.landscape ? 'landscape' : 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } }, headerFooter: { oddFooter: '&LShreedeep Software Solutions&RPage &P of &N' } });
+    const nc = sh.cols.length; ws.columns = sh.cols.map(w => ({ width: w }));
+    const head = [[S.meta.name || '', { size: 14, bold: true }], [[S.meta.regNo && 'Reg. No. ' + S.meta.regNo, [S.meta.address, S.meta.city].filter(Boolean).join(', ')].filter(Boolean).join(' · '), { size: 9, color: { argb: 'FF555555' } }], [sh.title, { size: 12, bold: true }], [sh.sub || '', { size: 10, italic: true, color: { argb: 'FF555555' } }]].filter(x => x[0]);
+    for (const [txt, font] of head) { const r = ws.addRow([txt]); ws.mergeCells(r.number, 1, r.number, nc); r.getCell(1).font = font; r.getCell(1).alignment = { horizontal: 'center' }; }
+    ws.addRow([]); const start = ws.rowCount + 1;
+    for (const row of sh.rows) {
+      const r = ws.addRow(row.map(c => (c && typeof c === 'object' ? (c.v == null ? null : c.v) : c == null ? null : c)));
+      row.forEach((c, i) => { const cell = r.getCell(i + 1); const o = c && typeof c === 'object' ? c : { v: c };
+        const isNum = typeof o.v === 'number'; if (isNum) cell.numFmt = o.al === 'center' && Number.isInteger(o.v) ? '0' : o.v < 0 ? '-#,##0.00' : INR_FMT;
+        cell.font = { bold: !!o.b, italic: !!o.it, size: 10, color: o.color ? { argb: o.color } : undefined };
+        cell.alignment = { horizontal: o.al || (isNum ? 'right' : 'left'), vertical: 'middle', indent: o.ind || 0, wrapText: !isNum && !!o.wrap };
+        if (o.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: o.fill } };
+        if (o.top || o.dbl || o.box) cell.border = { top: o.top || o.dbl ? med : undefined, bottom: o.dbl ? dbl : o.box ? thin : undefined, left: o.box ? thin : undefined, right: o.box ? thin : undefined };
+      });
+    }
+    if (sh.headRow) ws.views = [{ state: 'frozen', ySplit: start }];
+    if (sh.after) sh.after(ws);
+  }
+  const buf = await wb.xlsx.writeBuffer();
+  download(filename.replace(/[^\w\-. ]+/g, '_') + '.xlsx', new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  return true;
+}
+const HD = (v, al) => ({ v, b: true, fill: 'FFDFE4EC', al: al || 'center', box: true });
+// Turn T-rows into styled Excel cells for one side
+function tCells(r, on) {
+  if (!r) return on ? [null, null, null] : [null, null];
+  const n = x => (x == null ? null : r2(x));
+  if (r.k === 'g') return on ? [null, { v: r.label, b: true, fill: 'FFF1F3F6' }, null] : [{ v: r.label, b: true, fill: 'FFF1F3F6' }, null];
+  const lab = { v: r.label, ind: r.k === 's' ? 2 : 0, b: r.k === 'gt' || r.k === 'tt' }; const amt = { v: r.amt == null || (r.zero === false && !r.amt) ? null : n(r.amt), b: r.k === 'gt' || r.k === 'tt', top: r.k === 'gt', dbl: r.k === 'tt' };
+  const pv = { v: r.pv == null || (r.k !== 'tt' && !r.pv) ? null : n(r.pv), b: r.k === 'tt', dbl: r.k === 'tt', color: 'FF555555' };
+  if (r.k === 'tt') lab.fill = amt.fill = pv.fill = 'FFF6F7F9';
+  return on ? [pv, lab, amt] : [lab, amt];
+}
+function tSheetRows(L, R, on, lt, rt) {
+  const pad = a => { a = a.slice(); const last = a.pop(); const n = Math.max(L.length, R.length); while (a.length < n - 1) a.push(null); a.push(last); return a; };
+  const l = pad(L), r = pad(R);
+  const head = on ? [HD('Previous Year ₹'), HD(lt), HD('Current Year ₹'), null, HD('Previous Year ₹'), HD(rt), HD('Current Year ₹')] : [HD(lt), HD('Amount ₹'), null, HD(rt), HD('Amount ₹')];
+  return [head, ...l.map((x, i) => [...tCells(x, on), null, ...tCells(r[i], on)])];
+}
+function vSheetRows(sections, on) {
+  const rows = [on ? [HD('Particulars', 'left'), HD('Previous Year ₹'), HD('Current Year ₹')] : [HD('Particulars', 'left'), HD('Amount ₹')]];
+  for (const [sec, list, totLabel] of sections) {
+    rows.push(on ? [{ v: sec, b: true, fill: 'FFDFE4EC' }, { v: null, fill: 'FFDFE4EC' }, { v: null, fill: 'FFDFE4EC' }] : [{ v: sec, b: true, fill: 'FFDFE4EC' }, { v: null, fill: 'FFDFE4EC' }]);
+    for (const r of list) { const c = tCells(r.k === 'tt' ? { ...r, label: totLabel || 'TOTAL' } : r, on); rows.push(on ? [c[1], c[0], c[2]] : c); }
+  }
+  return rows;
+}
+const tCols = on => (on ? [15, 42, 15, 2, 15, 42, 15] : [46, 16, 2, 46, 16]);
+
+// ── Outputs used by the BS / I&E / R&P / Dues pages ──────────────────────
+async function fsExcel(kind, title, sub, L, R, on, extra = {}) {
+  const tpl = extra.tpl || fsTpl(); const [lt, rt] = { bs: ['LIABILITIES', 'ASSETS'], ie: ['EXPENDITURE', 'INCOME'], rp: ['RECEIPTS', 'PAYMENTS'] }[kind];
+  let rows, cols;
+  if (tpl === 'v') {
+    if (kind === 'ie') { const strip = a => a.filter(r => r.k !== 'tt' && !/^Excess of/.test(r.label)); const { ie, py } = extra;
+      rows = vSheetRows([['INCOME', [...strip(R), { k: 'tt', amt: ie.ti, pv: on ? py.ti : null }], 'Total Income'], ['EXPENDITURE', [...strip(L), { k: 'tt', amt: ie.te, pv: on ? py.te : null }], 'Total Expenditure']], on);
+      const res = { k: 'tt', label: ie.surplus >= 0 ? 'Excess of Income over Expenditure (Surplus)' : 'Excess of Expenditure over Income (Deficit)', amt: Math.abs(ie.surplus), pv: on ? Math.abs(py.surplus) : null }; const c = tCells(res, on); rows.push(on ? [c[1], c[0], c[2]] : c);
+    } else rows = vSheetRows(kind === 'bs' ? [['LIABILITIES & FUNDS', L, 'Total Liabilities'], ['ASSETS', R, 'Total Assets']] : [['RECEIPTS', L, 'Total Receipts'], ['PAYMENTS', R, 'Total Payments']], on && kind !== 'rp');
+    cols = on && kind !== 'rp' ? [56, 18, 18] : [60, 20];
+  } else { rows = tSheetRows(L, R, on && kind !== 'rp', lt, rt); cols = tCols(on && kind !== 'rp'); }
+  const sheets = [{ name: { bs: 'Balance Sheet', ie: 'Income & Expenditure', rp: 'Receipts & Payments' }[kind], title, sub, cols, rows, landscape: tpl !== 'v' && on }];
+  if (kind === 'bs' && extra.bs) { const bs = extra.bs; const sr = [];
+    if (bs.dues.length) { sr.push([{ v: 'SCHEDULE A — DUES FROM MEMBERS', b: true }], [HD('Sr.'), HD('Flat'), HD('Member', 'left'), HD('Principal ₹'), HD('Interest ₹'), HD('Total ₹')]);
+      bs.dues.forEach((x, i) => sr.push([{ v: i + 1, al: 'center' }, flatLbl(x.m), x.m.name, r2(x.P + x.N), r2(x.I), r2(x.amt)].map(c => (typeof c === 'object' && c ? c : { v: c, box: true }))));
+      sr.push([{ v: '' }, { v: '' }, { v: `Total (${bs.dues.length} members)`, b: true }, { v: r2(sum(bs.dues, x => x.P + x.N)), b: true, dbl: true }, { v: r2(sum(bs.dues, x => x.I)), b: true, dbl: true }, { v: r2(bs.td), b: true, dbl: true }], []); }
+    if (bs.adv.length) { sr.push([{ v: 'SCHEDULE B — ADVANCE RECEIVED FROM MEMBERS', b: true }], [HD('Sr.'), HD('Flat'), HD('Member', 'left'), HD('Advance ₹')]);
+      bs.adv.forEach((x, i) => sr.push([{ v: i + 1, al: 'center', box: true }, { v: flatLbl(x.m), box: true }, { v: x.m.name, box: true }, { v: r2(x.amt), box: true }]));
+      sr.push([{ v: '' }, { v: '' }, { v: `Total (${bs.adv.length} members)`, b: true }, { v: r2(bs.tadv), b: true, dbl: true }]); }
+    if (sr.length) sheets.push({ name: 'Schedules', title: 'Schedules to the Balance Sheet', sub, cols: [7, 10, 36, 16, 14, 16], rows: sr });
+  }
+  const ok = await xlsxPretty(`${{ bs: 'Balance_Sheet', ie: 'IE_Account', rp: 'RP_Account' }[kind]}_${S.fy.label}`, sheets);
+  if (!ok) { // offline fallback: plain Excel
+    if (kind === 'bs' && extra.bs) return xlsxT('Balance_Sheet_' + S.fy.label, title, lt, rt, tX(L, on), tX(R, on), on);
+    return xlsxT(`${{ ie: 'IE_Account', rp: 'RP_Account' }[kind]}_${S.fy.label}`, title, lt, rt, tX(L, on && kind !== 'rp'), tX(R, on && kind !== 'rp'), on && kind !== 'rp');
+  }
+  toast('Excel downloaded');
+}
+
+// Outstanding list: three print / Excel templates
+function osHtml(D, asOf, tpl) {
+  tpl = tpl || osTpl(); const T_ = k => sum(D, x => (typeof k === 'function' ? k(x) : x[k]));
+  if (tpl === 'simple') return `<table><thead><tr><th style="width:40px">Sr.</th><th>Flat</th><th>Member</th><th class="n">Amount due ₹</th></tr></thead><tbody>${D.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(flatLbl(x.m))}</td><td>${esc(x.m.name)}</td><td class="n">${fmt(x.bal)}</td></tr>`).join('')}<tr class="tot"><td colspan="3">Total (${D.length} members)</td><td class="n">${fmt(T_('bal'))}</td></tr></tbody></table>`;
+  if (tpl === 'wing') { const W = {}; D.forEach(x => (W[x.m.wing || '—'] = W[x.m.wing || '—'] || []).push(x));
+    return `<table><thead><tr><th>Flat</th><th>Member</th><th class="n">Principal</th><th class="n">Interest</th><th class="n">Total due</th><th>Last paid</th></tr></thead><tbody>${Object.keys(W).sort().map(w => `<tr class="g"><td colspan="6">Wing ${esc(w)}</td></tr>${W[w].map(x => `<tr><td>${esc(flatLbl(x.m))}</td><td>${esc(x.m.name)}</td><td class="n">${fmt(x.P)}</td><td class="n">${fmt(x.I)}</td><td class="n">${fmt(x.bal)}</td><td>${fd(x.lastR)}</td></tr>`).join('')}<tr style="font-weight:700"><td colspan="2" style="text-align:right">Wing ${esc(w)} total (${W[w].length})</td><td class="n">${fmt(sum(W[w], x => x.P))}</td><td class="n">${fmt(sum(W[w], x => x.I))}</td><td class="n">${fmt(sum(W[w], x => x.bal))}</td><td></td></tr>`).join('')}<tr class="tot"><td colspan="2">Grand total (${D.length} members)</td><td class="n">${fmt(T_('P'))}</td><td class="n">${fmt(T_('I'))}</td><td class="n">${fmt(T_('bal'))}</td><td></td></tr></tbody></table>`; }
+  return `<table><thead><tr><th>Flat</th><th>Member</th><th class="n">Principal</th><th class="n">Interest</th><th class="n">Total due</th><th class="n">0–3 m</th><th class="n">3–6 m</th><th class="n">6–12 m</th><th class="n">12 m+</th><th>Last paid</th></tr></thead><tbody>${D.map(x => `<tr><td>${esc(flatLbl(x.m))}</td><td>${esc(x.m.name)}</td><td class="n">${fmt(x.P)}</td><td class="n">${fmt(x.I)}</td><td class="n">${fmt(x.bal)}</td><td class="n">${x.ag.a ? fmt0(x.ag.a) : ''}</td><td class="n">${x.ag.b ? fmt0(x.ag.b) : ''}</td><td class="n">${x.ag.c ? fmt0(x.ag.c) : ''}</td><td class="n">${x.ag.d ? fmt0(x.ag.d) : ''}</td><td>${fd(x.lastR)}</td></tr>`).join('')}<tr class="tot"><td colspan="2">Total (${D.length} members)</td><td class="n">${fmt(T_('P'))}</td><td class="n">${fmt(T_('I'))}</td><td class="n">${fmt(T_('bal'))}</td><td class="n">${fmt0(T_(x => x.ag.a))}</td><td class="n">${fmt0(T_(x => x.ag.b))}</td><td class="n">${fmt0(T_(x => x.ag.c))}</td><td class="n">${fmt0(T_(x => x.ag.d))}</td><td></td></tr></tbody></table>`;
+}
+function osPrint() { const asOf = val('du-d'); const D = duesData(asOf, nval('du-m'), +val('du-a')); const tpl = osTpl();
+  printDoc('Outstanding list', `<div class="doc" ${tpl === 'ageing' ? 'style="max-width:277mm"' : ''}>${tpl === 'ageing' ? '<style>@page{size:A4 landscape}</style>' : ''}${letterhead(true)}<h2 class="tt">LIST OF OUTSTANDING DUES FROM MEMBERS</h2><div class="center small muted" style="margin:-4px 0 8px">As on ${fd(asOf)}</div>${osHtml(D, asOf, tpl)}${signBlock(designations())}</div>`, { auto: false }); }
+async function osExcel() {
+  const asOf = val('du-d'); const D = duesData(asOf, nval('du-m'), +val('du-a')); const tpl = osTpl(); let cols, rows;
+  const box = v => ({ v, box: true }); const tot = (v, extra = {}) => ({ v: r2(v), b: true, dbl: true, ...extra });
+  if (tpl === 'simple') { cols = [7, 10, 40, 18]; rows = [[HD('Sr.'), HD('Flat'), HD('Member', 'left'), HD('Amount due ₹')], ...D.map((x, i) => [{ v: i + 1, al: 'center', box: true }, box(flatLbl(x.m)), box(x.m.name), box(r2(x.bal))]), [null, null, { v: `Total (${D.length} members)`, b: true }, tot(sum(D, x => x.bal))]]; }
+  else if (tpl === 'wing') { cols = [10, 36, 15, 13, 15, 12]; rows = [[HD('Flat'), HD('Member', 'left'), HD('Principal ₹'), HD('Interest ₹'), HD('Total due ₹'), HD('Last paid')]]; const W = {}; D.forEach(x => (W[x.m.wing || '—'] = W[x.m.wing || '—'] || []).push(x));
+    for (const w of Object.keys(W).sort()) { rows.push([{ v: 'Wing ' + w, b: true, fill: 'FFF1F3F6' }, { v: null, fill: 'FFF1F3F6' }, { v: null, fill: 'FFF1F3F6' }, { v: null, fill: 'FFF1F3F6' }, { v: null, fill: 'FFF1F3F6' }, { v: null, fill: 'FFF1F3F6' }]); W[w].forEach(x => rows.push([box(flatLbl(x.m)), box(x.m.name), box(r2(x.P)), box(r2(x.I)), box(r2(x.bal)), box(fd(x.lastR))])); rows.push([null, { v: `Wing ${w} total`, b: true, al: 'right' }, { v: r2(sum(W[w], x => x.P)), b: true, top: true }, { v: r2(sum(W[w], x => x.I)), b: true, top: true }, { v: r2(sum(W[w], x => x.bal)), b: true, top: true }, null]); }
+    rows.push([null, { v: `Grand total (${D.length} members)`, b: true }, tot(sum(D, x => x.P)), tot(sum(D, x => x.I)), tot(sum(D, x => x.bal)), null]); }
+  else { cols = [7, 9, 30, 14, 12, 14, 12, 12, 12, 12, 12, 13]; rows = [[HD('Wing'), HD('Flat'), HD('Member', 'left'), HD('Principal ₹'), HD('Interest ₹'), HD('Total due ₹'), HD('0–3 m'), HD('3–6 m'), HD('6–12 m'), HD('12 m+'), HD('Phone'), HD('Last paid')], ...D.map(x => [box(x.m.wing || ''), box(String(x.m.flat)), box(x.m.name), box(r2(x.P)), box(r2(x.I)), box(r2(x.bal)), box(r2(x.ag.a) || null), box(r2(x.ag.b) || null), box(r2(x.ag.c) || null), box(r2(x.ag.d) || null), box(x.m.phone || ''), box(fd(x.lastR))]),
+    [null, null, { v: `Total (${D.length} members)`, b: true }, tot(sum(D, x => x.P)), tot(sum(D, x => x.I)), tot(sum(D, x => x.bal)), tot(sum(D, x => x.ag.a)), tot(sum(D, x => x.ag.b)), tot(sum(D, x => x.ag.c)), tot(sum(D, x => x.ag.d)), null, null]]; }
+  const ok = await xlsxPretty('Outstanding_' + asOf, [{ name: 'Outstanding', title: 'List of outstanding dues from members', sub: 'As on ' + fd(asOf), cols, rows, landscape: tpl === 'ageing', headRow: true }]);
+  if (!ok) return duesOut(); toast('Excel downloaded');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // ADMINISTRATION: year-end & locks · team · audit trail · settings · data tools (backup, restore, MAXX import)
 // ═══════════════════════════════════════════════════════════════════════
 const nextDay = s => { const d = pd(s); d.setDate(d.getDate() + 1); return ymd(d); };
@@ -3228,7 +3522,7 @@ function audOut() { xlsx('Audit_Trail', [{ name: 'Audit', rows: [['When', 'User'
 page('settings', {
   render(tab) {
     tab = tab || LS.get('sb_st', 'soc'); LS.set('sb_st', tab); const st = SET(); const m = S.meta; const ro = isAdmin() ? '' : 'disabled';
-    const T_ = [['soc', '🏢 Society'], ['billing', '🧾 Billing'], ['print', '🖨 Bill printing'], ['letters', '✍ Letters, TDS & charges'], ['display', '🎨 Display']];
+    const T_ = [['soc', '🏢 Society'], ['billing', '🧾 Billing'], ['print', '🖨 Bill printing'], ['tpl', '📐 Templates & numbering'], ['letters', '✍ Letters, TDS & charges'], ['display', '🎨 Display']];
     const inp = (id, lbl, v, extra = '') => `<div><label>${lbl}</label><input id="${id}" value="${esc(v == null ? '' : v)}" ${ro} ${extra}></div>`;
     let body = '';
     if (tab === 'soc') body = `<div class="fr c2">${inp('se-name', 'Society name (English)', m.name)}${inp('se-nmr', 'Society name (मराठी) – used on Marathi bills', m.nameMr)}</div><div class="fr c3">${inp('se-reg', 'Registration No.', m.regNo)}${inp('se-pan', 'PAN', m.pan)}${inp('se-tan', 'TAN (for TDS)', m.tan)}</div><div class="fr">${inp('se-addr', 'Address', m.address)}</div><div class="fr c4">${inp('se-city', 'City', m.city)}${inp('se-pin', 'PIN', m.pin)}${inp('se-ph', 'Phone', m.phone)}${inp('se-em', 'Email', m.email)}</div><div class="fr c3">${inp('se-gst', 'GSTIN', m.gstin)}</div>`;
@@ -3244,6 +3538,15 @@ page('settings', {
       <div class="fr"><div><label>Notes printed on every bill</label><textarea id="se-notes" rows="4" ${ro}>${esc(b.notes)}</textarea></div></div>
       <div class="fr c4">${inp('se-bn', 'Bank name', b.bankName)}${inp('se-ba', 'Account no.', b.bankAc)}${inp('se-bi', 'IFSC', b.bankIfsc)}${inp('se-bb', 'Branch', b.bankBranch)}</div>
       <div class="fr c2">${inp('se-upi', 'UPI ID (for QR code with exact amount)', b.upi, 'placeholder="society@bank"')}<div><label>Print UPI QR on bills</label><select id="se-qr" ${ro}><option value="1">Yes</option><option value="0" ${b.qr ? '' : 'selected'}>No</option></select></div></div>`; }
+    if (tab === 'tpl') { const t = st.tpl; const sel = (id, map, v) => `<select id="${id}" ${ro}>${Object.entries(map).map(([k, l]) => `<option value="${k}" ${v === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+      body = `<h3>Bills & receipts</h3><div class="fr c3"><div><label>Bill template</label>${sel('se-tb', BILL_TPLS, t.bill)}</div><div><label>Receipt template</label>${sel('se-trc', RCPT_TPLS, t.rcpt)}</div><div><label>Colour (Modern templates)</label><input id="se-tc" type="color" value="${esc(t.color || '#1f4e8c')}" ${ro} style="height:38px;padding:3px"></div></div>
+      <div class="row" style="margin-bottom:14px"><button class="ghost sm" onclick="tplPreview('bill')">👁 Preview bill</button><button class="ghost sm" onclick="tplPreview('rcpt')">👁 Preview receipt</button><span class="small muted">Preview uses the selection above (save to keep it).</span></div>
+      <h3>Final statements</h3><div class="fr c2"><div><label>Balance Sheet, I&E and R&P format</label>${sel('se-tfs', FS_TPLS, t.fs)}</div><div><label>Outstanding list format</label>${sel('se-tos', OS_TPLS, t.os)}</div></div>
+      <div class="row" style="margin-bottom:14px"><button class="ghost sm" onclick="tplPreview('bs')">👁 Preview Balance Sheet</button><button class="ghost sm" onclick="tplPreview('ie')">👁 Preview I&E</button><button class="ghost sm" onclick="tplPreview('os')">👁 Preview outstanding list</button></div>
+      <div class="alert a-info small">Member-wise dues and advances always print as <b>Schedule A / Schedule B</b> on a separate page of the Balance Sheet (and a separate sheet in Excel); the Balance Sheet itself shows one total for each. Each report page also has a <b>Format</b> drop-down to print a different format once.</div>
+      <h3 style="margin-top:14px">Voucher numbering</h3>
+      <label class="row small" style="margin:4px 0"><input type="checkbox" id="se-nr" ${t.reuse !== false ? 'checked' : ''} ${ro}> When the <b>latest</b> receipt / voucher is deleted, give its number to the next entry (no gap)</label>
+      <label class="row small" style="margin:4px 0"><input type="checkbox" id="se-nm" ${t.manual !== false ? 'checked' : ''} ${ro}> Admins can type or change a receipt / voucher number (e.g. to fill a gap or match the receipt book) — the software checks it is not already used</label>`; }
     if (tab === 'letters') { const l = st.letter; body = `<h3>Office bearers (for letters & notices)</h3><div class="fr c3">${inp('se-ch', 'Chairman', l.chair)}${inp('se-sec', 'Secretary', l.sec)}${inp('se-tr', 'Treasurer', l.treas)}</div>
       <h3 style="margin-top:14px">Cheque bounce</h3><div class="fr c3">${inp('se-bc', 'Bounce charge to member ₹', st.bounce.charge, 'type="number"')}</div>
       <h3 style="margin-top:14px">TDS sections</h3><div class="tw"><table><thead><tr><th>Section</th><th>Description</th><th class="n">Rate %</th><th></th></tr></thead><tbody id="se-tds">${st.tds.sections.map(x => tdsRowHtml(x)).join('')}</tbody></table></div>${isAdmin() ? `<button class="sm ghost" style="margin-top:6px" onclick="$('se-tds').insertAdjacentHTML('beforeend',tdsRowHtml({c:'',d:'',r:0}))">+ Add section</button>` : ''}`; }
@@ -3252,6 +3555,17 @@ page('settings', {
   }
 });
 const tdsRowHtml = x => `<tr class="se-tr"><td><input data-k="c" value="${esc(x.c)}" style="width:80px;min-width:0"></td><td><input data-k="d" value="${esc(x.d)}"></td><td><input data-k="r" type="number" step="0.01" value="${x.r}" style="width:80px;min-width:0"></td><td><button class="xs ghost" onclick="this.closest('tr').remove()">✕</button></td></tr>`;
+const tplForm = () => ({ bill: val('se-tb'), rcpt: val('se-trc'), color: val('se-tc'), fs: val('se-tfs'), os: val('se-tos') });
+// Preview a template with this society's real data, before saving
+function tplPreview(what) {
+  const keep = S.meta.settings; S.meta.settings = { ...(keep || {}), tpl: { ...SET().tpl, ...tplForm() } }; const fsK = 'fs_' + S.sid, osK = 'os_' + S.sid; const fs0 = RP.get(fsK, ''), os0 = RP.get(osK, ''); RP.set(fsK, ''); RP.set(osK, '');
+  try {
+    if (what === 'bill') { const b = Object.entries(S.bills).sort((a, c) => c[1].d.localeCompare(a[1].d))[0]; if (!b) return toast('No bills yet this year to preview', 'warn'); printBills([b[0]], { tpl: val('se-tb'), color: val('se-tc') }); }
+    else if (what === 'rcpt') { const v = Object.entries(S.vch).filter(([, x]) => x.t === 'R').sort((a, c) => c[1].d.localeCompare(a[1].d))[0]; if (!v) return toast('No receipts yet this year to preview', 'warn'); printVoucher(v[0]); }
+    else { const div = document.createElement('div'); div.style.display = 'none'; div.innerHTML = `<input id="bs-d" value="${S.fy.end}"><input id="ie-d" value="${S.fy.end}"><input id="du-d" value="${asOfNow()}"><input id="du-m" value="1"><input id="du-a" value="0">`; document.body.appendChild(div);
+      try { if (what === 'bs') bsOut('p'); else if (what === 'ie') ieOut('p'); else osPrint(); } finally { div.remove(); } }
+  } finally { S.meta.settings = keep; RP.set(fsK, fs0); RP.set(osK, os0); }
+}
 async function saveSettings(tab) {
   if (!isAdmin()) return; const up = {}; let s = '';
   if (tab === 'soc') { const name = val('se-name'); if (!name) return toast('Name required', 'err'); Object.assign(up, { 'meta/name': name, 'meta/nameMr': val('se-nmr'), 'meta/regNo': val('se-reg'), 'meta/pan': val('se-pan').toUpperCase(), 'meta/tan': val('se-tan').toUpperCase(), 'meta/address': val('se-addr'), 'meta/city': val('se-city'), 'meta/pin': val('se-pin'), 'meta/phone': val('se-ph'), 'meta/email': val('se-em'), 'meta/gstin': val('se-gst').toUpperCase() }); s = 'Society details'; }
@@ -3260,6 +3574,7 @@ async function saveSettings(tab) {
     up['meta/settings/billing'] = { per, im: val('se-im'), obFrom: val('se-im') === 'A' ? null : (val('se-obf') || null), rate: nval('se-rate'), intOn: val('se-int') === '1', dueDays: nval('se-due'), basis: val('se-basis'), gst: { on: val('se-gon') === '1', rate: nval('se-grate'), limit: nval('se-glim') } }; s = 'Billing settings';
   }
   if (tab === 'print') { up['meta/settings/bill'] = { ...SET().bill, lang: val('se-lang'), mrDigits: val('se-mrd') === '1', sign: val('se-sign'), showSplit: val('se-split') === '1', notes: $('se-notes').value, bankName: val('se-bn'), bankAc: val('se-ba'), bankIfsc: val('se-bi').toUpperCase(), bankBranch: val('se-bb'), upi: val('se-upi'), qr: val('se-qr') === '1', signMode: val('se-sm'), cgBill: val('se-cgb'), cgRcpt: val('se-cgr') }; s = 'Bill printing'; }
+  if (tab === 'tpl') { up['meta/settings/tpl'] = { ...tplForm(), reuse: $('se-nr').checked, manual: $('se-nm').checked }; s = 'Templates & numbering'; }
   if (tab === 'letters') { up['meta/settings/letter'] = { chair: val('se-ch'), sec: val('se-sec'), treas: val('se-tr') }; up['meta/settings/bounce'] = { charge: nval('se-bc') }; up['meta/settings/tds'] = { sections: $$('.se-tr').map(tr => ({ c: $$('[data-k=c]', tr)[0].value.trim(), d: $$('[data-k=d]', tr)[0].value.trim(), r: numv($$('[data-k=r]', tr)[0].value) })).filter(x => x.c) }; s = 'Letters, TDS & charges'; }
   await commit(up, { a: 'settings', e: 'settings', s: s + ' updated' }); toast('Saved');
 }
