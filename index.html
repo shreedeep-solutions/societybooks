@@ -92,6 +92,7 @@ tr.grp td{font-weight:700;color:var(--tx2);background:var(--bg);font-size:11px;t
 .side .ic{width:18px;text-align:center}
 .side-q{padding:8px 10px 2px;display:none}.side-q input{width:100%}.side-foot{display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:4px}
 #bnav{display:none}
+#printov{position:fixed;inset:0;z-index:2000;background:#525659;display:flex;flex-direction:column}#printov .pov-bar{display:flex;gap:8px;align-items:center;padding:8px 10px calc(8px);background:var(--surface);border-bottom:1px solid var(--border);padding-top:calc(8px + env(safe-area-inset-top))}#printov .pov-bar b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#printov iframe{flex:1;border:0;width:100%;background:#fff}
 main{flex:1;overflow-y:auto}
 .ph{padding:18px 24px 14px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--surface)}
 .ph h1{font-size:19px;font-weight:700}.ph p{color:var(--tx2);font-size:12.5px;margin-top:2px}
@@ -1141,7 +1142,22 @@ td.n,th.n{text-align:right;font-family:'Courier New',monospace;white-space:nowra
 .small{font-size:10.5px}.muted{color:#555}.cut{border-top:1.5px dashed #888;margin:12px 0 7px;text-align:center;font-size:10px;color:#666}.rcbox{border:1px solid #999;padding:7px 10px 4px}.rcbox .sig{margin-top:6px}.b{font-weight:700}.right{text-align:right}.center{text-align:center}
 .tf{display:grid;grid-template-columns:1fr 1fr;border:1px solid #999}.tf>div{display:flex;flex-direction:column}.tf>div>.tl.tt{margin-top:auto}.tf>div:first-child{border-right:1px solid #999}.tf .h{font-weight:800;text-align:center;padding:5px;border-bottom:1px solid #999;background:#f1f3f6}
 .tl{display:flex;justify-content:space-between;padding:2px 8px;font-size:11.5px}.haspv .tl .lb,.haspv .tph>span:nth-child(2){flex:1;padding-left:6px}.haspv .tl.s .lb{padding-left:16px}.tl .p,.tph .p{width:78px;flex:0 0 78px;text-align:right;font-family:'Courier New',monospace;color:#444;border-right:1px solid #ccc;padding-right:5px}.tph{display:flex;justify-content:space-between;align-items:center;font-size:10.5px}.tph .p{font-family:inherit;color:inherit;font-size:9.5px}.tph .a{font-size:9.5px}.haspv .tl.s{padding-left:8px}.tl .a{font-family:'Courier New',monospace}.tl.g{font-weight:700;padding-top:6px}.tl.s{padding-left:18px}.tl.tt{font-weight:800;border-top:1.5px solid #555;background:#f6f7f9;padding:4px 8px}`;
+// Phones and the installed app can't use a separate print window (it crashes / opens blank), so print inside the app
+const usePrintOverlay = () => { try { const mm = q => window.matchMedia && window.matchMedia(q).matches; return mm('(display-mode: standalone)') || mm('(display-mode: fullscreen)') || mm('(display-mode: minimal-ui)') || !!window.navigator.standalone || (mm('(pointer: coarse)') && Math.min(screen.width, screen.height) < 900); } catch (e) { return false; } };
+function printOverlay(title, html) {
+  const old = $('printov'); if (old) old.remove();
+  const ov = document.createElement('div'); ov.id = 'printov';
+  ov.innerHTML = `<div class="pov-bar"><b>${esc(title)}</b><span class="spacer"></span><button onclick="printOvGo()">🖨 Print / Save PDF</button><button class="ghost" onclick="printOvClose()">✕ Close</button></div><iframe id="printov-f" title="${esc(title)}"></iframe>`;
+  document.body.appendChild(ov);
+  const f = $('printov-f'); f.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet"><style>${PRINT_CSS}.np{display:none!important}@media screen{body{padding:8px;zoom:${Math.min(1, (window.innerWidth - 8) / 760).toFixed(2)}}}</style></head><body>${html}</body></html>`;
+  try { history.pushState({ printov: 1 }, ''); } catch (e) { } // Back button closes the preview instead of leaving the app
+  return { document: { write() { }, open() { }, close() { } }, focus() { }, print: printOvGo, close: printOvClose, overlay: true };
+}
+function printOvGo() { const f = $('printov-f'); if (!f) return; try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { toast('Printing is not available here — use your browser\'s Share → Print', 'warn', 6000); } }
+function printOvClose(fromBack) { const ov = $('printov'); if (!ov) return; ov.remove(); if (!fromBack) { try { if (history.state && history.state.printov) history.back(); } catch (e) { } } }
+window.addEventListener('popstate', () => { if ($('printov')) printOvClose(true); });
 function printDoc(title, html, { auto = true, win = null } = {}) {
+  if ((!win || win.overlay) && usePrintOverlay()) return printOverlay(title, html);
   const w = win || window.open('', '_blank', 'width=1000,height=760'); if (!w) { toast('Please allow pop-ups to print', 'err'); return null; }
   w.document.open();
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet"><style>${PRINT_CSS}</style></head><body><div class="np"><button onclick="window.print()">🖨 Print / Save as PDF</button><button class="g" onclick="window.close()">✕ Close</button></div>${html}</body></html>`);
@@ -3006,6 +3022,7 @@ function printBills(ids, opt = {}) {
   const needPrev = opt.receipts !== false && typeof prevFyId === 'function' && prevFyId() && !prevFYReady() && ids.some(id => { const b = S.bills[id]; return b && !Object.values(S.bills).some(x => x.mid === b.mid && x.d < b.d); });
   if (!needPrev) return printDoc('Bills', make());
   // open the window now (keeps the click's pop-up permission), fill it once last year's receipts are loaded
+  if (usePrintOverlay()) { toast('Preparing bills…'); return loadPrevFY().then(() => printDoc('Bills', make())); }
   const w = window.open('', '_blank', 'width=1000,height=760'); if (!w) return toast('Please allow pop-ups to print', 'err');
   try { w.document.write('<p style="font-family:Arial;padding:30px">Preparing bills…</p>'); } catch (e) { }
   loadPrevFY().then(() => printDoc('Bills', make(), { win: w }));
@@ -3390,12 +3407,15 @@ function rrData(f = rgF(), t = rgT(), h = val('rr-h'), mo = !!($('rr-m') && $('r
     .filter(r => (!h || r.h === h) && (!mo || r.isM)).sort((a, b) => a.d.localeCompare(b.d) || a.at - b.at); }
 function rrOut() { const R = rrData(); xlsx('Receipt_Register_' + S.fy.label, [{ name: 'Receipts', title: `Receipt register ${fd(rgF())} to ${fd(rgT())}`, rows: [['Date', 'Receipt', 'From', 'Mode', 'Ref', 'Into', 'Amount', 'Bounced'], ...R.map(r => [fd(r.d), r.no, r.from, r.mode, r.ref, r.into, r.amt, r.bnc ? 'Yes' : ''])], cols: [11, 12, 34, 10, 14, 20, 13, 8] }]); }
 
+let COLL_X = [];
+function collectXl() { xlsx('Collection_' + S.fy.label, [{ name: 'Collection', rows: [['Bills', 'Bill date', 'Billed', 'Collected before next bill', '%'], ...COLL_X], cols: [30, 12, 14, 22, 6] }]); }
 page('collect', {
   render() {
     const runs = regRuns().concat(Object.entries(S.runs || {}).filter(([, r]) => r && r.supp)).sort((a, b) => a[1].d.localeCompare(b[1].d)); const I = IDS();
     const rcpts = L_().filter(l => l.src === 'v' && l.h === I.dues && l.cr && !l.bnc && !l.rev);
     const rows = runs.map(([k, r], i) => { const next = runs[i + 1] ? runs[i + 1][1].d : '9999'; const billed = sum(runBills(k), ([, b]) => ENG.billTotal(b)); const coll = sum(rcpts.filter(l => l.d >= r.d && l.d < next), l => l.cr); return { k, r, billed, coll, pct: billed ? Math.round(coll / billed * 100) : 0 }; });
-    shell('📈 Collection Summary', 'How much of each bill run was collected before the next one', `<button class="ghost" onclick="printMain('Collection Summary','FY '+S.fy.label)">🖨 Print</button><button class="ghost" onclick="xlsx('Collection_${S.fy.label}',[{name:'Collection',rows:[['Bills','Bill date','Billed','Collected before next bill','%'],...${JSON.stringify(rows.map(x => [x.r.supp ? 'Supp: ' + x.r.desc : perLbl(x.r.from, x.r.to), fd(x.r.d), x.billed, x.coll, x.pct]))}],cols:[30,12,14,22,6]}])">📥 Excel</button>`,
+    COLL_X = rows.map(x => [x.r.supp ? 'Supp: ' + x.r.desc : perLbl(x.r.from, x.r.to), fd(x.r.d), x.billed, x.coll, x.pct]);
+    shell('📈 Collection Summary', 'How much of each bill run was collected before the next one', `<button class="ghost" onclick="printMain('Collection Summary','FY '+S.fy.label)">🖨 Print</button><button class="ghost" onclick="collectXl()">📥 Excel</button>`,
       `<div class="tw"><table><thead><tr><th>Bills</th><th>Date</th><th class="n">Billed (current)</th><th class="n">Collected till next bill</th><th style="width:30%">Collection %</th></tr></thead><tbody>${rows.map(x => `<tr><td>${x.r.supp ? '⊕ ' + esc(x.r.desc) : perLbl(x.r.from, x.r.to)}</td><td>${fd(x.r.d)}</td><td class="n">${fmt(x.billed)}</td><td class="n">${fmt(x.coll)}</td><td><div style="background:var(--border);height:8px;border-radius:4px"><div style="background:${x.pct >= 90 ? 'var(--ok)' : x.pct >= 60 ? 'var(--warn)' : 'var(--err)'};height:8px;border-radius:4px;width:${Math.min(100, x.pct)}%"></div></div><span class="small">${x.pct}%</span></td></tr>`).join('') || '<tr><td colspan="5" class="empty">No bills yet</td></tr>'}</tbody></table></div>`);
   }
 });
