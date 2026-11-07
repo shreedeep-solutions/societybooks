@@ -1,0 +1,317 @@
+{
+ "rules": {
+  "users": {
+   "$uid": {
+    ".read": "auth != null",
+    ".write": "auth != null && auth.uid === $uid"
+   }
+  },
+  "emailIndex": {
+   "$k": {
+    ".read": "auth != null",
+    ".write": "auth != null && newData.val() === auth.uid && $k === auth.token.email.toLowerCase().replace('.', ',')"
+   }
+  },
+  "userSocieties": {
+   "$uid": {
+    ".read": "auth != null && auth.uid === $uid",
+    "$sid": {
+     ".write": "auth != null && ((auth.uid === $uid && (root.child('firm/approved/'+auth.uid).exists() || root.child('firm/admins/'+auth.uid).exists() || (root.child('userOrg/'+auth.uid).exists() && root.child('orgs/'+root.child('userOrg/'+auth.uid).val()+'/until').val() > now && !root.child('orgs/'+root.child('userOrg/'+auth.uid).val()+'/blocked').exists())) && !root.child('societies/'+$sid).exists()) || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || (auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/tm').val() === true && $uid !== auth.uid && root.child('societies/'+$sid+'/meta/access/'+$uid+'/r').val() !== 'admin' && root.child('societies/'+$sid+'/meta/access/'+$uid+'/tm').val() !== true && (!newData.exists() || newData.val() === 'accountant' || newData.val() === 'viewer')))"
+    }
+   }
+  },
+  "publicLedgers": {
+   "$tok": {
+    ".read": true,
+    ".write": "auth != null && (newData.exists() ? (root.child('societies/'+newData.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+newData.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'accountant') : (root.child('societies/'+data.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+data.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'accountant'))"
+   }
+  },
+  "societies": {
+   "$sid": {
+    ".read": "(auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid).exists()) && root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() !== 'guard' && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
+    ".write": "(auth != null && ((!data.exists() && (root.child('firm/approved/'+auth.uid).exists() || root.child('firm/admins/'+auth.uid).exists() || ((root.child('userOrg/'+auth.uid).exists() && root.child('orgs/'+root.child('userOrg/'+auth.uid).val()+'/until').val() > now && !root.child('orgs/'+root.child('userOrg/'+auth.uid).val()+'/blocked').exists()) && newData.child('meta/org').val() === root.child('userOrg/'+auth.uid).val())) && newData.child('meta/owner').val() === auth.uid && newData.child('meta/access/'+auth.uid+'/r').val() === 'admin') || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))",
+    "heads": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "members": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "bcfg": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "pending": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "runs": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "ob": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "counters": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "locks": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "summary": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "inv": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "fa": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "mtg": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "ntc": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "cmp": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "shr": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "brs": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "fys": {
+     "$fy": {
+      ".write": "(!data.exists() && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+     }
+    },
+    "audit": {
+     "$a": {
+      ".write": "(!data.exists() && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/tm').val() === true)) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+     }
+    },
+    "presence": {
+     "$uid": {
+      ".write": "(auth != null && auth.uid === $uid && root.child('societies/'+$sid+'/meta/access/'+auth.uid).exists()) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+     }
+    },
+    "vch": {
+     "$fy": {
+      "$id": {
+       ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && root.child('societies/'+$sid+'/fys/'+$fy+'/closed').val() !== true) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))",
+       "clr": {
+        ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+       }
+      }
+     }
+    },
+    "bills": {
+     "$fy": {
+      "$id": {
+       ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && root.child('societies/'+$sid+'/fys/'+$fy+'/closed').val() !== true) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+      }
+     }
+    },
+    "meta": {
+     "access": {
+      "$u": {
+       ".write": "(auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/tm').val() === true && $u !== auth.uid && (!data.exists() || (data.child('r').val() !== 'admin' && data.child('tm').val() !== true)) && (!newData.exists() || ((newData.child('r').val() === 'accountant' || newData.child('r').val() === 'viewer') && !newData.child('tm').exists()))) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+      }
+     }
+    },
+    "portal": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))",
+     "$mid": {
+      ".read": "(auth != null && root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid) && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())"
+     }
+    },
+    "minbox": {
+     "$mid": {
+      ".read": "(auth != null && root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid) && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
+      "$rid": {
+       ".write": "(auth != null && ((root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid && !data.exists() && newData.child('uid').val() === auth.uid && !newData.child('st').exists() && !newData.child('by').exists() && !newData.child('done').exists() && !newData.child('big').exists() && !newData.child('no').exists()) || (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'committee')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+      }
+     }
+    },
+    "mlink": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))",
+     "$uid": {
+      ".read": "(auth != null && auth.uid === $uid) && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())"
+     }
+    },
+    "mreq": {
+     "$uid": {
+      ".read": "(auth != null && auth.uid === $uid) && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
+      ".write": "(auth != null && ((auth.uid === $uid && root.child('societies/'+$sid+'/meta').exists()) || (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant'))) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+     }
+    },
+    "mapp": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))",
+     "pub": {
+      ".read": "(auth != null && (root.child('societies/'+$sid+'/mlink/'+auth.uid).exists() || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard')) && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
+      "booked": {
+       ".write": "(auth != null && ((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'committee')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+      }
+     },
+     "payreq": {
+      "$id": {
+       "st": {
+        ".write": "(auth != null && ((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'committee')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+       },
+       "dec": {
+        ".write": "(auth != null && ((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'committee')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+       }
+      }
+     }
+    },
+    "gate": {
+     ".read": "auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
+     ".write": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "mvis": {
+     "$mid": {
+      ".read": "auth != null && root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
+      ".write": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+     }
+    },
+    "mbill": {
+     "$mid": {
+      ".read": "auth != null && root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
+      ".write": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+     }
+    },
+    "gstf": {
+     ".read": "auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant' && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
+     ".write": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "gatt": {
+     ".read": "auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant' && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
+     ".write": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
+    },
+    "gpass": {
+     ".read": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
+     "$mid": {
+      ".read": "auth != null && root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
+      "$pid": {
+       ".write": "auth != null && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()) && ((root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid && ((!data.exists() && newData.child('uid').val() === auth.uid && !newData.child('used').exists()) || (data.child('uid').val() === auth.uid && !newData.exists()))) || (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant'))",
+       ".validate": "!newData.exists() || (newData.child('name').isString() && newData.child('name').val().length <= 60 && newData.child('d').isString() && newData.child('code').isString())"
+      }
+     }
+    }
+   }
+  },
+  "firm": {
+   "admins": {
+    ".read": "auth != null",
+    "$uid": {
+     ".write": "auth != null && ((root.child('firm/admins/'+auth.uid).exists()) || ($uid === auth.uid && !root.child('firm/admins').exists()))"
+    }
+   },
+   "approved": {
+    ".read": "root.child('firm/admins/'+auth.uid).exists()",
+    "$uid": {
+     ".read": "auth != null && auth.uid === $uid",
+     ".write": "root.child('firm/admins/'+auth.uid).exists()"
+    }
+   },
+   "pending": {
+    ".read": "root.child('firm/admins/'+auth.uid).exists()",
+    "$uid": {
+     ".write": "auth != null && (root.child('firm/admins/'+auth.uid).exists() || $uid === auth.uid)"
+    }
+   },
+   "rejected": {
+    "$uid": {
+     ".read": "auth != null && auth.uid === $uid",
+     ".write": "root.child('firm/admins/'+auth.uid).exists()"
+    }
+   },
+   "desk": {
+    ".read": "auth != null && (root.child('firm/admins/'+auth.uid).exists() || root.child('firm/approved/'+auth.uid).exists())",
+    ".write": "auth != null && (root.child('firm/admins/'+auth.uid).exists() || root.child('firm/approved/'+auth.uid).exists())"
+   },
+   "fin": {
+    ".read": "auth != null && root.child('firm/admins/'+auth.uid).exists()",
+    ".write": "auth != null && root.child('firm/admins/'+auth.uid).exists()"
+   }
+  },
+  "memberSocs": {
+   "$uid": {
+    ".read": "auth != null && auth.uid === $uid",
+    "$sid": {
+     ".write": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+    }
+   }
+  },
+  "socDir": {
+   "$sid": {
+    ".read": "auth != null",
+    ".write": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+   }
+  },
+  "orgs": {
+   "$oid": {
+    ".read": "auth != null && (data.child('users/'+auth.uid).exists() || root.child('firm/admins/'+auth.uid).exists())",
+    ".write": "auth != null && (root.child('firm/admins/'+auth.uid).exists() || (!data.exists() && newData.child('owner').val() === auth.uid && newData.child('plan').val() === 'trial' && newData.child('until').val() <= now + 31*86400000 && newData.child('users/'+auth.uid+'/r').val() === 'owner' && !newData.child('blocked').exists() && !newData.child('pays').exists() && !root.child('userOrg/'+auth.uid).exists()))",
+    "name": {
+     ".write": "auth != null && data.parent().child('owner').val() === auth.uid && newData.isString() && newData.val().length < 120"
+    },
+    "phone": {
+     ".write": "auth != null && data.parent().child('owner').val() === auth.uid"
+    },
+    "city": {
+     ".write": "auth != null && data.parent().child('owner').val() === auth.uid"
+    },
+    "users": {
+     "$u": {
+      ".write": "auth != null && ((root.child('orgs/'+$oid+'/owner').val() === auth.uid && $u !== auth.uid) || ($u === auth.uid && !data.exists() && root.child('orgInv/'+auth.token.email.toLowerCase().replace('.', ',')+'/oid').val() === $oid && newData.child('r').val() === 'staff'))"
+     }
+    },
+    "desk": {
+     ".write": "auth != null && root.child('orgs/'+$oid+'/users/'+auth.uid).exists()"
+    },
+    "socs": {
+     "$sid": {
+      ".write": "auth != null && root.child('orgs/'+$oid+'/users/'+auth.uid).exists()"
+     }
+    },
+    "pays": {
+     "$p": {
+      ".write": "auth != null && root.child('orgs/'+$oid+'/users/'+auth.uid).exists() && !data.exists() && newData.child('st').val() === 'new'"
+     }
+    }
+   },
+   ".read": "auth != null && root.child('firm/admins/'+auth.uid).exists()"
+  },
+  "userOrg": {
+   "$uid": {
+    ".read": "auth != null && (auth.uid === $uid || root.child('firm/admins/'+auth.uid).exists())",
+    ".write": "auth != null && (root.child('firm/admins/'+auth.uid).exists() || (auth.uid === $uid && !data.exists() && (newData.parent().parent().child('orgs/'+newData.val()+'/owner').val() === auth.uid || root.child('orgInv/'+auth.token.email.toLowerCase().replace('.', ',')+'/oid').val() === newData.val())) || (!newData.exists() && root.child('orgs/'+data.val()+'/owner').val() === auth.uid))"
+   }
+  },
+  "orgInv": {
+   "$k": {
+    ".read": "auth != null && $k === auth.token.email.toLowerCase().replace('.', ',')",
+    ".write": "auth != null && (root.child('firm/admins/'+auth.uid).exists() || $k === auth.token.email.toLowerCase().replace('.', ',') && !newData.exists() || (newData.exists() && root.child('orgs/'+newData.child('oid').val()+'/owner').val() === auth.uid) || (!newData.exists() && root.child('orgs/'+data.child('oid').val()+'/owner').val() === auth.uid))"
+   }
+  },
+  "plat": {
+   "pub": {
+    ".read": "auth != null",
+    ".write": "auth != null && root.child('firm/admins/'+auth.uid).exists()"
+   }
+  },
+  "orgFin": {
+   "$oid": {
+    ".read": "auth != null && root.child('orgs/'+$oid+'/owner').val() === auth.uid",
+    ".write": "auth != null && root.child('orgs/'+$oid+'/owner').val() === auth.uid"
+   }
+  },
+  "vendorIdx": {
+   "$k": {
+    ".read": "auth != null && auth.token.email != null && $k === auth.token.email.toLowerCase().replace('.', ',')",
+    "$tok": {
+     ".write": "auth != null && ((newData.exists() && (root.child('societies/'+newData.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+newData.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) || (!newData.exists() && (root.child('societies/'+data.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+data.child('sid').val()+'/meta/access/'+auth.uid+'/r').val() === 'accountant')))"
+    }
+   }
+  }
+ }
+}
