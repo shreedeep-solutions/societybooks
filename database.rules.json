@@ -195,6 +195,14 @@
        ".validate": "!newData.exists() || (newData.child('name').isString() && newData.child('name').val().length <= 60 && newData.child('d').isString() && newData.child('code').isString())"
       }
      }
+    },
+    "chqimg": {
+     ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))",
+     "$fy": {
+      "$vid": {
+       ".validate": "!newData.exists() || (newData.child('f').isString() && newData.child('f').val().length < 1500000 && (!newData.child('b').exists() || (newData.child('b').isString() && newData.child('b').val().length < 1500000)))"
+      }
+     }
     }
    }
   },
