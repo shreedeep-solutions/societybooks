@@ -1,8 +1,19 @@
-// Solutions4Society — app shell for installing as an app. Always fetches the latest version first; uses the saved copy only when offline.
-const C = 's4s-v1';
-self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(C).then(c => c.addAll(['./', './manifest.webmanifest', './icon-192.png', './icon-512.png']).catch(() => { }))); });
+// Solutions4Society — offline copy & instant start (v12.2).
+// The app is kept on this device and opens from the saved copy at once. Each new version installs itself in the
+// background (this file changes with every version), and the app shows "A new version is available — Update now".
+const B = '20261108041710', C = 's4s-' + B, APP = 'app.' + B + '.js';
+const PRE = ['./', APP, './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(C).then(c => Promise.all(PRE.map(u => fetch(new Request(u, { cache: 'reload' })).then(r => { if (r.ok) return c.put(u, r); }).catch(() => { }))))); });
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
-  const r = e.request; if (r.method !== 'GET' || new URL(r.url).origin !== location.origin) return; // Firebase & libraries go straight to the network
-  e.respondWith(fetch(r).then(res => { if (res.ok) { const cp = res.clone(); caches.open(C).then(c => c.put(r, cp)); } return res; }).catch(() => caches.match(r).then(m => m || caches.match('./'))));
+  const r = e.request; const u = new URL(r.url);
+  if (r.method !== 'GET' || u.origin !== location.origin) return; // Firebase, Google & libraries always go to the internet
+  if (r.cache === 'no-store' || u.pathname.endsWith('/sw.js')) return; // version checks always ask the server
+  const nav = r.mode === 'navigate' || u.pathname.endsWith('/') || u.pathname.endsWith('/index.html');
+  e.respondWith(caches.open(C).then(async c => {
+    const hit = await c.match(nav ? './' : r, { ignoreSearch: nav });
+    if (hit) return hit;
+    try { const res = await fetch(r); if (res.ok && !u.search) c.put(nav ? './' : r, res.clone()); return res; }
+    catch (err) { return (await caches.match(nav ? './' : r, { ignoreSearch: true })) || Response.error(); }
+  }));
 });
