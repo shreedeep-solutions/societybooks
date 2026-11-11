@@ -166,6 +166,17 @@
      ".read": "auth != null && root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
      ".write": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))"
     },
+    "vreq": {
+     "$mid": {
+      ".read": "auth != null && (root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')",
+      ".write": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'guard' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')",
+      "$id": {
+       "st": { ".write": "auth != null && root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid && data.exists() && (newData.val() === 'yes' || newData.val() === 'no')" },
+       "aby": { ".write": "auth != null && root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid && newData.isString() && newData.val().length < 80" },
+       "at": { ".write": "auth != null && root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid && newData.val() <= now" }
+      }
+     }
+    },
     "mvis": {
      "$mid": {
       ".read": "auth != null && root.child('societies/'+$sid+'/mlink/'+auth.uid).val() === $mid && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())",
