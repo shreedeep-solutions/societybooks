@@ -134,6 +134,7 @@
     "mlink": {
      ".write": "((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')) && (!root.child('societies/'+$sid+'/meta/org').exists() || (root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/until').val() > now && !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists()))",
      "$uid": {
+      ".write": "auth != null && auth.uid === $uid && auth.token.email_verified === true && root.child('mEmail/'+auth.token.email.toLowerCase().replace('.', ',')+'/'+$sid+'/'+newData.val()).exists()",
       ".read": "(auth != null && auth.uid === $uid) && (!root.child('societies/'+$sid+'/meta/org').exists() || !root.child('orgs/'+root.child('societies/'+$sid+'/meta/org').val()+'/blocked').exists())"
      }
     },
@@ -252,11 +253,17 @@
     ".write": "auth != null && root.child('firm/admins/'+auth.uid).exists()"
    }
   },
+  "mEmail": {
+   "$ek": {
+    ".read": "auth != null && auth.token.email_verified === true && auth.token.email.toLowerCase().replace('.', ',') === $ek",
+    "$sid": { ".write": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')" }
+   }
+  },
   "memberSocs": {
    "$uid": {
     ".read": "auth != null && auth.uid === $uid",
     "$sid": {
-     ".write": "auth != null && (root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant')"
+     ".write": "auth != null && ((root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'admin' || root.child('societies/'+$sid+'/meta/access/'+auth.uid+'/r').val() === 'accountant') || (auth.uid === $uid && auth.token.email_verified === true && root.child('mEmail/'+auth.token.email.toLowerCase().replace('.', ',')+'/'+$sid+'/'+newData.child('mid').val()).exists()))"
     }
    }
   },
