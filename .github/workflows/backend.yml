@@ -28,4 +28,5 @@ jobs:
           ' "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           npx --yes firebase-tools@latest deploy --only functions --project mysocietybooks --non-interactive --force
+          npx --yes firebase-tools@latest functions:artifacts:setpolicy --location asia-southeast1 --days 1 --force --project mysocietybooks --non-interactive || echo "::warning::cleanup policy not set"
           rm -f "$RUNNER_TEMP/sa.json"
