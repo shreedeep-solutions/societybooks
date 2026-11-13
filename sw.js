@@ -1,7 +1,7 @@
 // Solutions4Society — offline copy & instant start (v12.2).
 // The app is kept on this device and opens from the saved copy at once. Each new version installs itself in the
 // background (this file changes with every version), and the app shows "A new version is available — Update now".
-const B = '20261113022739', C = 's4s-' + B, APP = 'app.' + B + '.js';
+const B = '20261113145103', C = 's4s-' + B, APP = 'app.' + B + '.js';
 const PRE = ['./', APP, './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(C).then(c => Promise.all(PRE.map(u => fetch(new Request(u, { cache: 'reload' })).then(r => { if (r.ok) return c.put(u, r); }).catch(() => { }))))); });
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C).map(k => caches.delete(k)))).then(() => self.clients.claim())));
