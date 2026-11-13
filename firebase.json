@@ -1,0 +1,5 @@
+{
+  "functions": [
+    { "source": "functions", "codebase": "s4s", "runtime": "nodejs20", "ignore": ["node_modules", ".git", "*.log"] }
+  ]
+}

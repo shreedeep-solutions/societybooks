@@ -1,0 +1,11 @@
+{
+  "name": "s4s-backend",
+  "private": true,
+  "description": "Solutions4Society backend (Cloud Functions, region asia-southeast1 next to the database)",
+  "main": "index.js",
+  "engines": { "node": "20" },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0"
+  }
+}
