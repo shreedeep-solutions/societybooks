@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with: { node-version: 22 }
       - name: Install
         run: cd functions && npm install --no-audit --no-fund
       - name: Deploy functions
@@ -27,5 +27,5 @@ jobs:
             if (j.type!=="service_account") { console.log("::error::This is not a service-account key file"); process.exit(1); }
           ' "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          npx --yes firebase-tools@13 deploy --only functions --project mysocietybooks --non-interactive --force
+          npx --yes firebase-tools@latest deploy --only functions --project mysocietybooks --non-interactive --force
           rm -f "$RUNNER_TEMP/sa.json"
