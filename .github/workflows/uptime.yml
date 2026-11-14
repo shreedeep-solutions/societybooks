@@ -1,0 +1,41 @@
+name: S4S uptime check
+# Every 30 minutes: is the website up and is the server answering?
+# If not, an issue "S4S is down" is opened in this repo — GitHub emails the repo owner at once.
+# When it is back up, the issue is closed automatically with a note.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+permissions:
+  issues: write
+concurrency: { group: uptime, cancel-in-progress: false }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check website and server
+        id: chk
+        run: |
+          fail=""
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 https://sas.shreedeepsolutions.com/ || echo 000)
+          [ "$code" = "200" ] || fail="$fail Website https://sas.shreedeepsolutions.com/ answered $code."
+          body=$(curl -s --max-time 30 https://asia-southeast1-mysocietybooks.cloudfunctions.net/health || true)
+          echo "$body" | grep -q '"ok":true' || fail="$fail Server (payment reminders) health check failed: ${body:0:120}"
+          echo "fail=$fail" >> "$GITHUB_OUTPUT"
+          if [ -n "$fail" ]; then echo "::warning::$fail"; else echo "All good"; fi
+      - name: Open or close the "S4S is down" issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FAIL: ${{ steps.chk.outputs.fail }}
+        run: |
+          open=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --label uptime --json number --jq '.[0].number' || true)
+          if [ -n "$FAIL" ]; then
+            if [ -z "$open" ]; then
+              gh label create uptime -R "$GITHUB_REPOSITORY" --color B60205 --description "Uptime alerts" 2>/dev/null || true
+              gh issue create -R "$GITHUB_REPOSITORY" --label uptime --title "S4S is down" --body "Checked at $(date -u '+%Y-%m-%d %H:%M UTC'): $FAIL"
+            else
+              gh issue comment "$open" -R "$GITHUB_REPOSITORY" --body "Still down at $(date -u '+%Y-%m-%d %H:%M UTC'): $FAIL"
+            fi
+          elif [ -n "$open" ]; then
+            gh issue close "$open" -R "$GITHUB_REPOSITORY" --comment "Back up at $(date -u '+%Y-%m-%d %H:%M UTC')."
+          fi
