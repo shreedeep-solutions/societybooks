@@ -1,7 +1,7 @@
 // Solutions4Society — offline copy & instant start (v12.2).
 // The app is kept on this device and opens from the saved copy at once. Each new version installs itself in the
 // background (this file changes with every version), and the app shows "A new version is available — Update now".
-const B = '20261114134200', C = 's4s-' + B, APP = 'app.' + B + '.js';
+const B = '20261114141405', C = 's4s-' + B, APP = 'app.' + B + '.js';
 const LIB = 's4s-lib-1'; // v15.16: libraries (Firebase, pdf.js, Excel…) — their web addresses carry a version number, so a saved copy never goes stale
 const LIBHOST = /^(www\.gstatic\.com|cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|unpkg\.com)$/;
 const PRE = ['./', APP, './manifest.webmanifest', './icon-192.png', './icon-512.png'];
