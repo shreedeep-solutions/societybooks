@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="s4s-build" content="20261119174524">
+<meta name="s4s-build" content="20261119195840">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Solutions4Society</title>
 <link rel="icon" id="favi" href="data:,">
@@ -20,9 +20,9 @@ function L(u,alt){var s=document.createElement('script');s.src=u;s.async=true;if
 window.XLSX_URL=window.XLSX_URL||'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';L(window.XLSX_URL,'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');L('https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js');})();</script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getDatabase, ref, get, set, update, remove, push, onValue, runTransaction, serverTimestamp, onDisconnect, query, orderByKey, limitToLast, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-  window.FBSDK = { initializeApp, getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, getDatabase, ref, get, set, update, remove, push, onValue, runTransaction, serverTimestamp, onDisconnect, query, orderByKey, limitToLast, startAt, endAt };
+  window.FBSDK = { initializeApp, getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, RecaptchaVerifier, signInWithPhoneNumber, getDatabase, ref, get, set, update, remove, push, onValue, runTransaction, serverTimestamp, onDisconnect, query, orderByKey, limitToLast, startAt, endAt };
   window.dispatchEvent(new Event('fbsdk'));
 </script>
 <style>
@@ -248,6 +248,6 @@ html.oldwin{--font:'DM Sans',Arial,sans-serif;--mono:'DM Mono',Consolas,monospac
 <div id="public"></div>
 <div id="toasts"></div>
 <div id="modals"></div>
-<script src="app.20261119174524.js"></script>
+<script src="app.20261119195840.js"></script>
 </body>
 </html>
